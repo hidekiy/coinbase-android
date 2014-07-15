@@ -3,15 +3,15 @@ package com.coinbase.android;
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
 import android.content.SharedPreferences.Editor;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.FragmentActivity;
 import android.widget.Toast;
 
-import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.Account;
 
-public class WidgetChooseAccountActivity extends FragmentActivity implements AccountsFragment.ParentActivity {
+import roboguice.activity.RoboFragmentActivity;
+
+public class WidgetChooseAccountActivity extends RoboFragmentActivity implements AccountsFragment.ParentActivity {
 
   @Override
   protected void onCreate(Bundle arg0) {
@@ -20,7 +20,7 @@ public class WidgetChooseAccountActivity extends FragmentActivity implements Acc
     int widgetId = getIntent().getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
     AppWidgetManager manager = AppWidgetManager.getInstance(this);
     if(!PlatformUtils.hasHoneycomb() &&
-        manager.getAppWidgetInfo(widgetId).provider.getClassName().equals(TransactionsAppWidgetProvider.class.getName())) {
+            manager.getAppWidgetInfo(widgetId).provider.getClassName().equals(TransactionsAppWidgetProvider.class.getName())) {
       Toast.makeText(this, R.string.widget_transactions_compat, Toast.LENGTH_LONG).show();
       return; // Transactions widget does not work (adapter widgets were added in Honeycomb)
     }
@@ -34,18 +34,11 @@ public class WidgetChooseAccountActivity extends FragmentActivity implements Acc
     setResult(RESULT_CANCELED);
   }
 
-  public void onAddAccount() {
-
-    startActivity(new Intent(this, LoginActivity.class));
-  }
-
-  public void onAccountChosen(int accountId) {
-
+  public void onAccountChosen(Account account) {
     int widgetId = getIntent().getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-    int realAccountId = LoginManager.getInstance().getAccountId(this, accountId);
 
     Editor e = PreferenceManager.getDefaultSharedPreferences(this).edit();
-    e.putInt(String.format(Constants.KEY_WIDGET_ACCOUNT, widgetId), realAccountId);
+    e.putString(String.format(Constants.KEY_WIDGET_ACCOUNT, widgetId), account.getId());
     e.commit();
 
     Intent refresh = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);

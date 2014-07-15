@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name="com.coinbase.android.TestCaseEntryPointActivity"></activity>
+        <activity android:name="com.coinbase.android.TestAccountSettingsFragmentActivity"></activity>
+        <activity android:name="com.coinbase.android.TestBuySellFragmentActivity"></activity>
+        <activity android:name="com.coinbase.android.TestTransferFragmentActivity"></activity>
+        <activity android:name="com.coinbase.android.TestTransactionsFragmentActivity"></activity>
+        <activity android:name="com.coinbase.android.TestPointOfSaleFragmentActivity"></activity>
+    </application>
+</manifest>

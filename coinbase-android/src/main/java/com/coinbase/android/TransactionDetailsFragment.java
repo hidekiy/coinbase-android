@@ -1,43 +1,51 @@
 package com.coinbase.android;
 
-import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.ProgressDialog;
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
 import android.text.Html;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.coinbase.android.db.DatabaseObject;
-import com.coinbase.android.db.TransactionsDatabase;
-import com.coinbase.android.db.TransactionsDatabase.TransactionEntry;
+import com.coinbase.android.db.DatabaseManager;
+import com.coinbase.android.db.DelayedTransactionORM;
+import com.coinbase.android.db.TransactionORM;
+import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.android.pin.PINManager;
-import com.coinbase.api.RpcManager;
+import com.coinbase.android.task.FetchTransactionTask;
+import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.Transaction;
+import com.coinbase.api.entity.User;
+import com.coinbase.api.exception.CoinbaseException;
+import com.google.inject.Inject;
+import com.squareup.otto.Bus;
 
-import org.acra.ACRA;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
+import roboguice.fragment.RoboFragment;
+import roboguice.inject.InjectResource;
+import roboguice.inject.InjectView;
 
-import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+public class TransactionDetailsFragment extends RoboFragment {
 
-public class TransactionDetailsFragment extends Fragment {
+  @Inject
+  protected Bus mBus;
 
-  public static final String EXTRA_ID = "id";
+  @Inject
+  protected LoginManager mLoginManager;
+
+  @Inject
+  protected PINManager mPinManager;
+
+  @Inject
+  protected DatabaseManager mDbManager;
+
+  public static final String ID = "id";
+  public static final String DELAYED = "delayed";
 
   private static enum ActionType {
     RESEND,
@@ -48,166 +56,197 @@ public class TransactionDetailsFragment extends Fragment {
   private String mPinReturnTransactionId;
   private ActionType mPinReturnActionType;
 
-  private class TakeActionTask extends AsyncTask<Object, Void, String> {
+  ViewGroup mView;
+  View mContainer;
 
+  @InjectView(R.id.transactiondetails_amount)          TextView amount;
+  @InjectView(R.id.transactiondetails_label_amount)    TextView amountLabel;
+  @InjectView(R.id.transactiondetails_from)            TextView from;
+  @InjectView(R.id.transactiondetails_to)              TextView to;
+  @InjectView(R.id.transactiondetails_date)            TextView date;
+  @InjectView(R.id.transactiondetails_status)          TextView status;
+  @InjectView(R.id.transactiondetails_label_notes)         View notesLabel;
+  @InjectView(R.id.transactiondetails_notes)           TextView notes;
+  @InjectView(R.id.transactiondetails_action_positive) TextView positive;
+  @InjectView(R.id.transactiondetails_action_negative) TextView negative;
+  @InjectView(R.id.transactiondetails_actions)             View actions;
+
+  private class ResendRequestTask extends com.coinbase.android.task.ResendRequestTask {
     ProgressDialog mDialog;
-    ActionType type;
+
+    @InjectResource(R.string.transactiondetails_action_success_resend)
+    String successMessage;
+
+    public ResendRequestTask(String txId) {
+      super(getActivity(), txId);
+    }
 
     @Override
     protected void onPreExecute() {
-      super.onPreExecute();
-
       mDialog = ProgressDialog.show(getActivity(), null, getString(R.string.transactiondetails_progress));
     }
 
     @Override
-    protected String doInBackground(Object... params) {
-
-      type = (ActionType) params[0];
-      String transactionID = (String) params[1];
-
-      String url = String.format("transactions/%s/", transactionID);
-
-      try {
-
-        JSONObject result = null;
-
-        switch(type) {
-        case RESEND:
-          result = RpcManager.getInstance().callPut(getActivity(), url + "resend_request", null);
-          break;
-        case COMPLETE:
-          result = RpcManager.getInstance().callPut(getActivity(), url + "complete_request", null);
-          break;
-        case CANCEL:
-          result = RpcManager.getInstance().callDelete(getActivity(), url + "cancel_request", null);
-          break;
-        }
-
-        boolean success = result.getBoolean("success");
-
-        if(success) {
-          return null;
-        } else {
-          String error = result.optString("error", null);
-          if(error == null && result.has("errors")) {
-            // Array
-            error = Utils.getErrorStringFromJson(result, ", ");
-          }
-          return error;
-        }
-      } catch(Exception e) {
-        // An error
-        e.printStackTrace();
-        return e.getMessage();
-      }
+    public void onSuccess(Void v) {
+      Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    protected void onPostExecute(String result) {
-
-      try {
-        mDialog.dismiss();
-      } catch (Exception e) {
-        // ProgressDialog has been destroyed already
+    public void onException(Exception ex) {
+      String result = "";
+      if (ex instanceof CoinbaseException) {
+        result = ex.getMessage();
       }
 
-      if(getActivity() == null) {
-        return;
+      Toast.makeText(
+              context,
+              String.format(
+                      getActivity().getString(R.string.transactiondetails_action_error),
+                      result
+              ),
+              Toast.LENGTH_LONG
+      ).show();
+    }
+
+    @Override
+    public void onFinally() {
+      mDialog.dismiss();
+    }
+  }
+
+  private class CompleteRequestTask extends com.coinbase.android.task.CompleteRequestTask {
+    ProgressDialog mDialog;
+
+    @InjectResource(R.string.transactiondetails_action_success_complete)
+    String successMessage;
+
+    public CompleteRequestTask(String txId) {
+      super(getActivity(), txId);
+    }
+
+    @Override
+    protected void onPreExecute() {
+      mDialog = ProgressDialog.show(getActivity(), null, getString(R.string.transactiondetails_progress));
+    }
+
+    @Override
+    public void onSuccess(Transaction t) {
+      Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onException(Exception ex) {
+      String result = "";
+      if (ex instanceof CoinbaseException) {
+        result = ex.getMessage();
       }
 
-      if(result != null) {
+      Toast.makeText(
+              context,
+              String.format(
+                      getActivity().getString(R.string.transactiondetails_action_error),
+                      result
+              ),
+              Toast.LENGTH_LONG
+      ).show();
+    }
 
-        Log.i("Coinbase", "Transacation action not successful.");
-        Toast.makeText(getActivity(),
-            String.format(getActivity().getString(R.string.transactiondetails_action_error), result), Toast.LENGTH_LONG).show();
+    @Override
+    public void onFinally() {
+      mDialog.dismiss();
+
+      if (context instanceof TransactionDetailsActivity) {
+        ((Activity) context).finish();
       } else {
-
-        int msg = 0;
-
-        switch(type) {
-          case RESEND:
-            msg = R.string.transactiondetails_action_success_resend;
-            break;
-          case COMPLETE:
-            msg = R.string.transactiondetails_action_success_complete;
-            break;
-          case CANCEL:
-            msg = R.string.transactiondetails_action_success_cancel;
-            break;
-        }
-
-        Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
-
-        if(type != ActionType.RESEND) {
-          if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).refresh();
-            ((TransactionsFragment) getParentFragment()).hideDetails(true);
-          } else {
-            getActivity().finish();
-          }
-        }
+        mBus.post(new RefreshRequestedEvent());
+        ((TransactionsFragment) getParentFragment()).hideDetails(true);
       }
     }
-
   }
 
-  private class LoadTransactionFromInternetTask extends AsyncTask<String, Void, JSONObject> {
+  private class CancelRequestTask extends com.coinbase.android.task.CancelRequestTask {
+    ProgressDialog mDialog;
 
-    String mId;
+    @InjectResource(R.string.transactiondetails_action_success_cancel)
+    String successMessage;
+
+    public CancelRequestTask(String txId) {
+      super(getActivity(), txId);
+    }
 
     @Override
-    protected JSONObject doInBackground(String... params) {
+    protected void onPreExecute() {
+      mDialog = ProgressDialog.show(getActivity(), null, getString(R.string.transactiondetails_progress));
+    }
 
-      mId = params[0];
+    @Override
+    public void onSuccess(Void v) {
+      Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show();
+    }
 
-      Log.i("Coinbase", "Loading transaction " + mId + " from internet...");
+    @Override
+    public void onException(Exception ex) {
+      String result = "";
+      if (ex instanceof CoinbaseException) {
+        result = ex.getMessage();
+      }
+
+      Toast.makeText(
+              context,
+              String.format(
+                      getActivity().getString(R.string.transactiondetails_action_error),
+                      result
+              ),
+              Toast.LENGTH_LONG
+      ).show();
+    }
+
+    @Override
+    public void onFinally() {
+      mDialog.dismiss();
+
+      if (context instanceof TransactionDetailsActivity) {
+        ((Activity) context).finish();
+      } else {
+        mBus.post(new RefreshRequestedEvent());
+        ((TransactionsFragment) getParentFragment()).hideDetails(true);
+      }
+    }
+  }
+
+  private class LoadTransactionTask extends FetchTransactionTask {
+
+    public LoadTransactionTask(String txId) {
+      super(getActivity(), txId);
+    }
+
+    @Override
+    protected void onSuccess(Transaction transaction) {
+      SQLiteDatabase db = mDbManager.openDatabase();
       try {
-        return RpcManager.getInstance().callGet(getActivity(), "transactions/" + mId).getJSONObject("transaction");
-      } catch (JSONException e) {
-        ACRA.getErrorReporter().handleException(new RuntimeException("LoadTransactionFromInternet", e));
-        e.printStackTrace();
-      } catch (IOException e) {
-        e.printStackTrace();
+        TransactionORM.insertOrUpdate(db, mLoginManager.getActiveAccountId(), transaction);
+      } finally {
+        mDbManager.closeDatabase();
       }
 
-      return null;
+      mContainer.setVisibility(View.VISIBLE);
+      fillViewsForTransaction(transaction);
     }
 
     @Override
-    protected void onPostExecute(JSONObject result) {
+    protected void onException(Exception ex) {
+      super.onException(ex);
 
-      if(mView != null && getActivity() != null) {
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-        String currentUserId = prefs.getString(String.format(Constants.KEY_ACCOUNT_ID, activeAccount), null);
-
-        try {
-          if(result != null) {
-            mContainer.setVisibility(View.VISIBLE);
-            fillViewsForJson(mView, result, currentUserId, mId);
-            return;
-          }
-        } catch (JSONException e) {
-          e.printStackTrace();
-        }
-
-        // Error
-        Toast.makeText(getActivity(), R.string.transactiondetails_error, Toast.LENGTH_SHORT).show();
-        if (getActivity() instanceof MainActivity) {
-          ((TransactionsFragment) getParentFragment()).hideDetails(true);
-        } else {
-          // Transaction details activity
-          getActivity().finish();
-        }
+      // Error
+      Toast.makeText(context, R.string.transactiondetails_error, Toast.LENGTH_SHORT).show();
+      if (context instanceof MainActivity) {
+        ((TransactionsFragment) getParentFragment()).hideDetails(true);
+      } else {
+        // Transaction details activity
+        ((Activity) context).finish();
       }
     }
-
   }
-
-  ViewGroup mView;
-  View mContainer;
 
   @Override
   public void onDestroyView() {
@@ -221,14 +260,15 @@ public class TransactionDetailsFragment extends Fragment {
       Bundle savedInstanceState) {
 
     // Inflate base layout
-    ViewGroup view = (ViewGroup) inflater.inflate(R.layout.fragment_transactiondetails, container, false);
-    mView = view;
-    mContainer = view.findViewById(R.id.transactiondetails_container);
+    mView = (ViewGroup) inflater.inflate(R.layout.fragment_transactiondetails, container, false);
+    return mView;
+  }
 
-    // Get user ID
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String currentUserId = prefs.getString(String.format(Constants.KEY_ACCOUNT_ID, activeAccount), null);
+  @Override
+  public void onViewCreated(View view, Bundle savedInstanceState) {
+    super.onViewCreated(view, savedInstanceState);
+
+    mContainer = view.findViewById(R.id.transactiondetails_container);
 
     // Get arguments
     Bundle args = getArguments();
@@ -237,152 +277,165 @@ public class TransactionDetailsFragment extends Fragment {
       // Fetch transaction information from internet.
       Uri uri = args.getParcelable("data");
       String transactionId = uri.getPath().substring("/transactions/".length());
-      new LoadTransactionFromInternetTask().execute(transactionId);
+
+      new LoadTransactionTask(transactionId).execute();
       mContainer.setVisibility(View.GONE);
-    } else {
-
-      // Fetch transaction JSON from database
-      final String transactionId = getArguments().getString(EXTRA_ID);
-      Cursor c = DatabaseObject.getInstance().query(getActivity(), TransactionEntry.TABLE_NAME,
-          new String[] { TransactionEntry.COLUMN_NAME_TRANSACTION_JSON, },
-          TransactionEntry._ID + " = ? AND " + TransactionEntry.COLUMN_NAME_ACCOUNT + " = ?",
-          new String[] { transactionId, Integer.toString(activeAccount) }, null, null, null);
-      if(!c.moveToFirst()) {
-        // Transaction not found
-        Toast.makeText(getActivity(), R.string.transactiondetails_error, Toast.LENGTH_SHORT).show();
-        getActivity().finish();
-        return view;
-      }
-      if (c.getCount() > 1) {
-        Log.w("Coinbase", "Warning: a query for a single tranasction returned " + c.getCount() + " results.");
-      }
-
-      String stringData;
+    } else if (args.getBoolean(DELAYED)) {
+      // Fetch transaction from cache
+      Transaction transaction;
+      final String transactionId = getArguments().getString(ID);
+      SQLiteDatabase db = mDbManager.openDatabase();
       try {
-        stringData = c.getString(c.getColumnIndex(TransactionEntry.COLUMN_NAME_TRANSACTION_JSON));
-      } catch(Exception e) {
-        stringData = null;
-      }
-
-      if(stringData == null) {
-        // No data for this transaction
-        new LoadTransactionFromInternetTask().execute(transactionId);
-        mContainer.setVisibility(View.GONE);
-        return view;
-      }
-
-      JSONObject data;
-      try {
-        data = new JSONObject(new JSONTokener(stringData));
-
-        c.close();
-
-        fillViewsForJson(view, data, currentUserId, transactionId);
-
-      } catch (JSONException e) {
-        Toast.makeText(getActivity(), R.string.transactiondetails_error, Toast.LENGTH_LONG).show();
-        e.printStackTrace();
-        getActivity().finish();
+        transaction = DelayedTransactionORM.find(db, transactionId);
       } finally {
+        mDbManager.closeDatabase();
+      }
 
-        c.close();
+      fillViewsForDelayedTransaction(transaction);
+    } else {
+      // Fetch transaction from cache
+      Transaction transaction;
+      final String transactionId = getArguments().getString(ID);
+      SQLiteDatabase db = mDbManager.openDatabase();
+      try {
+        transaction = TransactionORM.find(db, transactionId);
+      } finally {
+        mDbManager.closeDatabase();
+      }
+
+      if (transaction != null) {
+        fillViewsForTransaction(transaction);
+      } else {
+        new LoadTransactionTask(transactionId).execute();
       }
     }
-
-    return view;
   }
 
-  @SuppressLint("SimpleDateFormat")
-  private void fillViewsForJson(ViewGroup view, JSONObject data, String currentUserId,
-      final String transactionId) throws JSONException {
-
-    // Fill views
-    TextView amount = (TextView) view.findViewById(R.id.transactiondetails_amount),
-        amountLabel = (TextView) view.findViewById(R.id.transactiondetails_label_amount),
-        from = (TextView) view.findViewById(R.id.transactiondetails_from),
-        to = (TextView) view.findViewById(R.id.transactiondetails_to),
-        date = (TextView) view.findViewById(R.id.transactiondetails_date),
-        status = (TextView) view.findViewById(R.id.transactiondetails_status),
-        notes = (TextView) view.findViewById(R.id.transactiondetails_notes);
-    TextView positive = (TextView) view.findViewById(R.id.transactiondetails_action_positive),
-        negative = (TextView) view.findViewById(R.id.transactiondetails_action_negative);
-    View actions = view.findViewById(R.id.transactiondetails_actions);
-
-    boolean sentToMe = data.optJSONObject("sender") == null || !currentUserId.equals(data.getJSONObject("sender").optString("id"));
-    boolean isRequest = data.getBoolean("request");
-
+  private void fillViewsForDelayedTransaction(final Transaction tx) {
     // Amount
-    String amountText = Utils.formatCurrencyAmount(data.getJSONObject("amount").getString("amount"), true);
+    String amountText = Utils.formatMoney(tx.getAmount().abs());
     amount.setText(amountText);
-    int amountLabelResource = R.string.transactiondetails_amountsent;
-    if(isRequest) {
+    int amountLabelResource;
+    if (tx.isRequest()) {
       amountLabelResource = R.string.transactiondetails_amountrequested;
-    } else if(sentToMe) {
-      amountLabelResource = R.string.transactiondetails_amountreceived;
+    } else {
+      amountLabelResource = R.string.transactiondetails_amountsent;
     }
     amountLabel.setText(amountLabelResource);
 
-    // To / From
-    String recipient = getName(data.optJSONObject("recipient"), data.optString("recipient_address"), currentUserId);
-    from.setText(getName(data.optJSONObject("sender"), null, currentUserId));
-    to.setText(recipient);
+    String fromText, toText;
+    if (tx.isRequest()) {
+      fromText = tx.getFrom();
+      toText = getString(R.string.transaction_user_you);
+    } else {
+      fromText = getString(R.string.transaction_user_you);
+      toText = tx.getTo();
+    }
+    from.setText(fromText);
+    to.setText(toText);
     if (Build.VERSION.SDK_INT >= 11) {
       from.setTextIsSelectable(true);
       to.setTextIsSelectable(true);
     }
 
     // Date
-    SimpleDateFormat dateFormat = new SimpleDateFormat("MMMM dd, yyyy, 'at' hh:mma zzz");
-    try {
-      String createdAt = data.optString("created_at");
-      date.setText(dateFormat.format(ISO8601.toCalendar(createdAt).getTime()));
-    } catch (ParseException e) {
+    if (tx.getCreatedAt() != null) {
+      date.setText(tx.getCreatedAt().toString("MMMM dd, yyyy, 'at' hh:mma zzz"));
+    } else {
       date.setText(null);
     }
     date.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
 
-    // Status
-    String transactionStatus = data.optString("status", getString(R.string.transaction_status_error));
-    String readable = transactionStatus;
-    int background = R.drawable.transaction_unknown;
-    if("complete".equals(transactionStatus)) {
-      readable = getString(R.string.transaction_status_complete);
-      background = R.drawable.transaction_complete;
-    } else if("pending".equals(transactionStatus)) {
-      readable = getString(R.string.transaction_status_pending);
-      background = R.drawable.transaction_pending;
-    } else if("delayed".equals(transactionStatus)) {
-      readable = getString(R.string.transaction_status_delayed);
-      background = R.drawable.transaction_delayed;
-    }
-    status.setText(readable);
-    status.setBackgroundResource(background);
+    status.setText(getString(R.string.transaction_status_delayed));
+    status.setBackgroundResource(R.drawable.transaction_delayed);
 
     // Notes
-    String notesText = data.optString("notes");
+    String notesText = tx.getNotes();
 
     boolean noNotes = "null".equals(notesText) || notesText == null || "".equals(notesText);
     notes.setText(noNotes ? null : Html.fromHtml(notesText.replace("\n", "<br>")));
     notes.setVisibility(noNotes ? View.GONE : View.VISIBLE);
 
-    view.findViewById(R.id.transactiondetails_label_notes).setVisibility(noNotes ? View.INVISIBLE : View.VISIBLE);
+    notesLabel.setVisibility(noNotes ? View.INVISIBLE : View.VISIBLE);
+
+    // Transaction has not actually been sent - show cancel button
+    positive.setText(R.string.transactiondetails_delayed_cancel);
+    negative.setVisibility(View.GONE);
+    positive.setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View v) {
+        cancelDelayedTransaction(tx);
+      }
+    });
+  }
+
+  private void fillViewsForTransaction(final Transaction tx) {
+    // Get user ID
+    String currentUserId = mLoginManager.getActiveUserId();
+
+    boolean sentToMe = tx.getSender() == null || !currentUserId.equals(tx.getSender().getId());
+
+    // Amount
+    String amountText = Utils.formatMoney(tx.getAmount().abs());
+    amount.setText(amountText);
+    int amountLabelResource = R.string.transactiondetails_amountsent;
+    if (tx.isRequest()) {
+      amountLabelResource = R.string.transactiondetails_amountrequested;
+    } else if(sentToMe) {
+      amountLabelResource = R.string.transactiondetails_amountreceived;
+    }
+    amountLabel.setText(amountLabelResource);
+
+    String toText   = getDisplayName(tx.getRecipient(), tx.getRecipientAddress());
+    String fromText = getDisplayName(tx.getSender(), null);
+    from.setText(fromText);
+    to.setText(toText);
+    if (Build.VERSION.SDK_INT >= 11) {
+      from.setTextIsSelectable(true);
+      to.setTextIsSelectable(true);
+    }
+
+    // Date
+    if (tx.getCreatedAt() != null) {
+      date.setText(tx.getCreatedAt().toString("MMMM dd, yyyy, 'at' hh:mma zzz"));
+    } else {
+      date.setText(null);
+    }
+    date.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
+
+    Transaction.Status transactionStatus = tx.getStatus();
+    int background = R.drawable.transaction_unknown;
+    String readable = getString(R.string.transaction_status_error);
+
+    switch (transactionStatus) {
+      case COMPLETE:
+        readable = getString(R.string.transaction_status_complete);
+        background = R.drawable.transaction_complete;
+        break;
+      case PENDING:
+        readable = getString(R.string.transaction_status_pending);
+        background = R.drawable.transaction_pending;
+        break;
+    }
+
+    status.setText(readable);
+    status.setBackgroundResource(background);
+
+    // Notes
+    String notesText = tx.getNotes();
+
+    boolean noNotes = "null".equals(notesText) || notesText == null || "".equals(notesText);
+    notes.setText(noNotes ? null : Html.fromHtml(notesText.replace("\n", "<br>")));
+    notes.setVisibility(noNotes ? View.GONE : View.VISIBLE);
+
+    notesLabel.setVisibility(noNotes ? View.INVISIBLE : View.VISIBLE);
 
     // Buttons
-    boolean senderOrRecipientIsExternal = data.optJSONObject("sender") == null || data.optJSONObject("recipient") == null;
+    boolean senderOrRecipientIsExternal = tx.getSender() == null || tx.getRecipient() == null;
     negative.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
     positive.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
-    if("delayed".equals(transactionStatus)) {
-      // Transaction has not actually been sent - show cancel button
 
-      positive.setText(R.string.transactiondetails_delayed_cancel);
-      negative.setVisibility(View.GONE);
-      positive.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-          cancelDelayedTransaction(transactionId);
-        }
-      });
-    } else if(!isRequest || senderOrRecipientIsExternal || !"pending".equals(transactionStatus)) {
+    if(!tx.isRequest() || senderOrRecipientIsExternal || tx.getStatus() != Transaction.Status.PENDING) {
       // No actions
       actions.setVisibility(View.GONE);
     } else if(sentToMe) {
@@ -393,50 +446,58 @@ public class TransactionDetailsFragment extends Fragment {
       negative.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-          takeAction(ActionType.CANCEL, transactionId);
+          takeAction(ActionType.CANCEL, tx.getId());
         }
       });
 
       positive.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-          takeAction(ActionType.RESEND, transactionId);
+          takeAction(ActionType.RESEND, tx.getId());
         }
       });
     } else {
 
-      positive.setText(String.format(getString(R.string.transactiondetails_request_send), amountText, recipient));
+      positive.setText(String.format(getString(R.string.transactiondetails_request_send), amountText, toText));
       negative.setText(R.string.transactiondetails_request_decline);
 
       positive.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-          takeAction(ActionType.COMPLETE, transactionId);
+          takeAction(ActionType.COMPLETE, tx.getId());
         }
       });
 
       negative.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-          takeAction(ActionType.CANCEL, transactionId);
+          takeAction(ActionType.CANCEL, tx.getId());
         }
       });
     }
   }
 
   private void takeAction(ActionType type, String transactionId) {
-
-    if(!PINManager.getInstance().checkForEditAccess(getActivity())) {
+    if(!mPinManager.checkForEditAccess(getActivity())) {
       mPinReturnTransactionId = transactionId;
       mPinReturnActionType = type;
       return;
     }
 
-    new TakeActionTask().execute(type, transactionId);
+    switch (type) {
+      case RESEND:
+        new ResendRequestTask(transactionId).execute();
+        break;
+      case CANCEL:
+        new CancelRequestTask(transactionId).execute();
+        break;
+      case COMPLETE:
+        new CompleteRequestTask(transactionId).execute();
+        break;
+    }
   }
 
   public void onPINPromptSuccessfulReturn() {
-
     if (mPinReturnActionType != null) {
 
       takeAction(mPinReturnActionType, mPinReturnTransactionId);
@@ -444,18 +505,17 @@ public class TransactionDetailsFragment extends Fragment {
     }
   }
 
-  private String getName(JSONObject person, String address, String currentUserId) {
-
-    String name = person == null ? null : person.optString("name");
-    String email = person == null ? null : person.optString("email");
+  private String getDisplayName (User user, String address) {
+    String currentUserId = mLoginManager.getActiveUserId();
+    String name = user == null ? null : user.getName();
+    String email = user == null ? null : user.getEmail();
     boolean hasEmail = email != null && !email.equals("");
 
-    if(person != null && currentUserId.equals(person.optString("id"))) {
+    if(user != null && currentUserId.equals(user.getId())) {
       return getString(R.string.transaction_user_you);
     }
 
     if(name != null) {
-
       String addition = "";
 
       if(!name.equals(email)) {
@@ -472,22 +532,20 @@ public class TransactionDetailsFragment extends Fragment {
     }
   }
 
-  private void cancelDelayedTransaction(String transactionId) {
-
-    // Delete transaction from database and update transactions list
-    DatabaseObject db = DatabaseObject.getInstance();
-    Context c = getActivity();
-    synchronized(db.databaseLock) {
-      db.delete(c, TransactionEntry.TABLE_NAME, TransactionEntry._ID + " = ?", new String[] { transactionId });
+  private void cancelDelayedTransaction(Transaction tx) {
+    SQLiteDatabase db = mDbManager.openDatabase();
+    try {
+      DelayedTransactionORM.delete(db, tx);
+    } finally {
+      mDbManager.closeDatabase();
     }
 
     // Show toast
-    Toast.makeText(c, R.string.transactiondetails_delayed_canceled, Toast.LENGTH_SHORT).show();
+    Toast.makeText(getActivity(), R.string.transactiondetails_delayed_canceled, Toast.LENGTH_SHORT).show();
 
     // Return to transactions list
     if (getActivity() instanceof MainActivity) {
-      ((MainActivity) getActivity()).refresh();
-      ((TransactionsFragment) getParentFragment()).loadTransactionsList();
+      mBus.post(new RefreshRequestedEvent());
       ((TransactionsFragment) getParentFragment()).hideDetails(true);
     } else {
       getActivity().finish();

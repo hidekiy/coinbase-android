@@ -15,6 +15,9 @@ public class Log {
     public static void e(String tag, String string) {
         if (LOG) android.util.Log.e(tag, string);
     }
+    public static void e(String tag, String string, Throwable t) {
+      if (LOG) android.util.Log.e(tag, string, t);
+    }
     public static void d(String tag, String string) {
         if (LOG) android.util.Log.d(tag, string);
     }

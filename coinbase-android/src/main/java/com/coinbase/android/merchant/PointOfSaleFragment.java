@@ -2,30 +2,20 @@ package com.coinbase.android.merchant;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.RoundRectShape;
-import android.media.AudioManager;
-import android.media.ToneGenerator;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Vibrator;
-import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.Html;
-import android.text.Spanned;
 import android.text.TextWatcher;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,7 +24,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -43,256 +32,166 @@ import android.widget.ViewFlipper;
 
 import com.coinbase.android.CoinbaseActivity;
 import com.coinbase.android.CoinbaseFragment;
-import com.coinbase.android.Constants;
 import com.coinbase.android.FontManager;
-import com.coinbase.android.MainActivity;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;
 import com.coinbase.android.pin.PINManager;
+import com.coinbase.android.settings.PreferencesManager;
+import com.coinbase.android.task.ApiTask;
+import com.coinbase.android.util.BitcoinUri;
 import com.coinbase.api.LoginManager;
-import com.coinbase.api.RpcManager;
+import com.coinbase.api.entity.Merchant;
+import com.coinbase.api.entity.Order;
+import com.github.rtyley.android.sherlock.roboguice.fragment.RoboSherlockFragment;
+import com.google.inject.Inject;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 
-import org.apache.http.message.BasicNameValuePair;
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.apache.commons.lang3.StringUtils;
+import org.joda.money.CurrencyUnit;
+import org.joda.money.Money;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
+import java.math.RoundingMode;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
+import roboguice.RoboGuice;
+import roboguice.fragment.RoboFragment;
+import roboguice.inject.InjectResource;
+import roboguice.inject.InjectView;
 
-  private class CreateButtonTask extends AsyncTask<String, Void, Object> {
+public class PointOfSaleFragment extends RoboSherlockFragment implements CoinbaseFragment {
 
-    @Override
-    protected Object doInBackground(String... strings) {
+  private class CreateOrderTask extends ApiTask<Order> {
 
-      String amount = strings[0];
-      String currency = strings[1];
-      String title = strings[2];
+    protected com.coinbase.api.entity.Button mButton;
 
-      if (title == null || title.trim().equals("")) {
-        title = "Android point of sale transaction";
-      }
+    @InjectResource(R.string.pos_result_failure_creation_exception)
+    protected String exceptionMessageString;
 
-      List<BasicNameValuePair> params = new ArrayList<BasicNameValuePair>();
-
-      params.add(new BasicNameValuePair("button[name]", title));
-      params.add(new BasicNameValuePair("button[description]", title));
-      params.add(new BasicNameValuePair("button[price_string]", amount));
-      params.add(new BasicNameValuePair("button[price_currency_iso]", currency));
-      params.add(new BasicNameValuePair("button[custom]", "coinbase_android_point_of_sale"));
-
-      try {
-        JSONObject response = RpcManager.getInstance().callPost(mParent, "buttons", params).optJSONObject("button");
-        String button = response.optString("code");
-
-        System.out.println(response.toString(5));
-
-        JSONObject orderResponse = RpcManager.getInstance().callPost(mParent,
-                "buttons/" + button + "/create_order", new ArrayList<BasicNameValuePair>());
-
-        return orderResponse;
-
-      } catch (Exception e) {
-
-        e.printStackTrace();
-        return e;
-      }
+    public CreateOrderTask(Context context, com.coinbase.api.entity.Button button) {
+      super(context);
+      mButton = button;
     }
 
     @Override
-    protected void onPostExecute(Object o) {
+    public Order call() throws Exception {
+      if (mButton.getName() == null || mButton.getName().trim().equals("")) {
+        mButton.setName("Android point of sale transaction");
+        mButton.setDescription("Android point of sale transaction");
+      }
 
+      return getClient().createOrder(mButton);
+    }
+
+    @Override
+    public void onSuccess(Order order) {
+      startAccepting(order);
+    }
+
+    @Override
+    public void onException(Exception ex) {
+      showResult(null, String.format(exceptionMessageString, ex.getMessage()), null);
+    }
+
+    @Override
+    public void onFinally() {
       mCreatingTask = null;
+    }
+  }
 
-      if (o == null) {
+  private class LoadMerchantInfoTask extends ApiTask<Merchant> {
+    private Bitmap logo;
 
-        showResult(null, R.string.pos_result_failure_creation, null);
-      } else if (o instanceof Exception) {
+    public LoadMerchantInfoTask(Context context) {
+      super(context);
+    }
 
-        showResult(null, mParent.getString(R.string.pos_result_failure_creation_exception, ((Exception) o).getMessage()), null);
-      } else {
+    @Override
+    public Merchant call() throws Exception {
+      Merchant result = getClient().getUser().getMerchant();
 
-        JSONObject result = (JSONObject) o;
-
-        if (!result.optBoolean("success")) {
-
-          showResult(null, mParent.getString(R.string.pos_result_failure_creation_exception, result.toString()), null);
-        } else {
-
+      if (result != null) {
+        if (result.getLogo() != null) {
+          String logoUrlString = result.getLogo().getSmall();
           try {
-            startAccepting(result.getJSONObject("order"));
-          } catch (JSONException e) {
-
-            showResult(null, mParent.getString(R.string.pos_result_failure_creation_exception, e.getMessage()), null);
+            URL logoUrl = logoUrlString.startsWith("/") ? new URL(new URL(mLoginManager.getClientBaseUrl()), logoUrlString) : new URL(logoUrlString);
+            logo = BitmapFactory.decodeStream(logoUrl.openStream());
+          } catch (Exception ex) {
+            ex.printStackTrace();
           }
         }
       }
-    }
-  }
 
-  private class LoadMerchantInfoTask extends AsyncTask<Void, Void, Object[]> {
+      return result;
+    }
 
     @Override
-    protected Object[] doInBackground(Void... arg0) {
+    public void onSuccess(Merchant merchant) {
+      for (View header : mHeaders) {
+        header.setVisibility(View.VISIBLE);
+      }
 
-      try {
-        // 1. Load merchant info
-        JSONObject response = RpcManager.getInstance().callGet(mParent, "users");
-        JSONObject userInfo = response.getJSONArray("users").getJSONObject(0).getJSONObject("user");
-        JSONObject merchantInfo = userInfo.getJSONObject("merchant");
+      String title = merchant.getCompanyName();
+      for (TextView titleView : mHeaderTitles) {
+        titleView.setText(title);
+        titleView.setGravity(logo != null ? Gravity.RIGHT : Gravity.CENTER);
+      }
 
-        // 2. if possible, load logo
-        if (merchantInfo.optJSONObject("logo") != null) {
-         try {
-
-           String logoUrlString = merchantInfo.getJSONObject("logo").getString("small");
-           URL logoUrl = logoUrlString.startsWith("/") ? new URL(new URL(LoginManager.CLIENT_BASEURL), logoUrlString) : new URL(logoUrlString);
-           Bitmap logo = BitmapFactory.decodeStream(logoUrl.openStream());
-           return new Object[] { merchantInfo, logo };
-         } catch (Exception e) {
-           // Could not load logo
-           e.printStackTrace();
-           return new Object[] { merchantInfo, null };
-         }
+      for (ImageView logoView : mHeaderLogos) {
+        if (logo != null) {
+          logoView.setVisibility(View.VISIBLE);
+          logoView.setImageBitmap(logo);
         } else {
-          // No logo
-          return new Object[] { merchantInfo, null };
+          logoView.setVisibility(View.GONE);
         }
-
-      } catch (Exception e) {
-        // Could not load merchant info
-        e.printStackTrace();
-        return null;
       }
     }
 
     @Override
-    protected void onPostExecute(Object[] result) {
-
-      if (result == null) {
-
-        // Data could not be loaded.
-        for (View header : mHeaders) {
-          header.setVisibility(View.GONE);
-        }
-      } else {
-
-        for (View header : mHeaders) {
-          header.setVisibility(View.VISIBLE);
-        }
-
-        String title = ((JSONObject) result[0]).optString("company_name");
-        for (TextView titleView : mHeaderTitles) {
-          titleView.setText(title);
-          titleView.setGravity(result[1] != null ? Gravity.RIGHT : Gravity.CENTER);
-        }
-
-
-        for (ImageView logoView : mHeaderLogos) {
-          if (result[1] != null) {
-            logoView.setVisibility(View.VISIBLE);
-            logoView.setImageBitmap((Bitmap) result[1]);
-          } else {
-            logoView.setVisibility(View.GONE);
-          }
-        }
+    public void onException(Exception ex) {
+      // Data could not be loaded.
+      for (View header : mHeaders) {
+        header.setVisibility(View.GONE);
       }
     }
-  }
-
-  private enum CheckStatusState {
-    SUCCESS,
-    FAILURE,
-    DONE;
   }
 
   private class CheckStatusTask extends TimerTask {
-
-    private Context mContext;
-    private TextView mStatus = null;
-    private Handler mHandler;
-    private String mOrderId;
-
+    private Order mOrder;
     private int mTimesExecuted = 0;
-    private JSONObject mOrder = null;
 
-    public CheckStatusTask(Context context, TextView statusView, String orderId) {
+    @Inject
+    private LoginManager mLoginManager;
 
-      mContext = context;
-      mStatus = statusView;
-      mHandler = new Handler();
-      mOrderId = orderId;
+    public CheckStatusTask(Order order) {
+      mOrder = order;
+      RoboGuice.getInjector(mParent).injectMembers(this);
     }
 
+    @Override
     public void run() {
-
       mTimesExecuted++;
-      final CheckStatusState state = doCheck();
-      if(state == CheckStatusState.DONE) {
 
-        // TODO cancel timer
-        paymentAccepted(mOrder);
-      } else {
-
-        // Update status indicator
-        mHandler.post(new Runnable() {
-
-          public void run() {
-
-            int textColor, bgColor;
-            String text;
-            if (state == CheckStatusState.SUCCESS) {
-              textColor = Color.BLACK;
-              bgColor = mParent.getResources().getColor(R.color.pos_waiting_good);
-              text = getString(R.string.pos_accept_waiting);
-
-              int index = (mTimesExecuted % 3) + 1;
-              text = text.substring(0, text.length() - index) + " " + text.substring(text.length() - index);
-            } else {
-              textColor = Color.WHITE;
-              bgColor = mParent.getResources().getColor(R.color.pos_waiting_bad);
-              text = getString(R.string.pos_accept_waiting_error);
-            }
-
-            mStatus.setTextColor(textColor);
-            mStatus.setBackgroundColor(bgColor);
-            mStatus.setText(text);
-          }
-        });
-      }
-    }
-
-    private CheckStatusState doCheck() {
       try {
+        Order updatedOrder = mLoginManager.getClient().getOrder(mOrder.getId());
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-        int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-        String currentUserId = prefs.getString(String.format(Constants.KEY_ACCOUNT_ID, activeAccount), null);
-
-        JSONObject response = RpcManager.getInstance().callGet(mContext, "orders/" + mOrderId);
-        if(response.optJSONObject("order") != null) {
-
-          mOrder = response.optJSONObject("order");
-          return CheckStatusState.DONE;
-        } else {
-          // Successful check, but the order isn't in yet.
-          return CheckStatusState.SUCCESS;
+        if (updatedOrder == null || updatedOrder.getStatus() == null) {
+          onOrderCheckError();
         }
 
-      } catch (Exception e) {
-        // Check was a failure - make sure to alert the user.
-        e.printStackTrace();
-        return CheckStatusState.FAILURE;
+        if (updatedOrder.getStatus() != Order.Status.NEW) {
+          onPaymentAccepted(updatedOrder);
+        } else {
+          onOrderCheckCompleted(mTimesExecuted);
+        }
+      } catch (Exception ex) {
+        onOrderCheckError();
       }
     }
   }
@@ -304,101 +203,77 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
   private static final int INDEX_ADD_TIP = 4;
   private static final int CHECK_PERIOD = 2000;
 
-  private MainActivity mParent;
-  private ToneGenerator mToneGenerator;
+  @InjectView(R.id.pos_accept_desc)            private TextView mAcceptDesc;
+  @InjectView(R.id.pos_accept_waiting)         private TextView mAcceptStatus;
+  @InjectView(R.id.pos_result_status)          private TextView mResultStatus;
+  @InjectView(R.id.pos_result_msg)             private TextView mResultMessage;
+  @InjectView(R.id.pos_add_tip_title)          private TextView mTipTitle;
+  @InjectView(R.id.pos_add_tip_custom_text)    private TextView mTipCustomText;
+  @InjectView(R.id.pos_result_ok)              private Button mResultOK;
+  @InjectView(R.id.pos_accept_cancel)          private Button mAcceptCancel;
+  @InjectView(R.id.pos_loading_cancel)         private Button mLoadingCancel;
+  @InjectView(R.id.pos_submit)                 private Button mSubmit;
+  @InjectView(R.id.pos_add_tip_custom)         private Button mTipCustom;
+  @InjectView(R.id.pos_add_tip_custom_confirm) private Button mTipCustomConfirm;
+  @InjectView(R.id.pos_add_tip_custom_field)   private EditText mTipCustomField;
+  @InjectView(R.id.pos_notes)                  private EditText mNotes;
+  @InjectView(R.id.pos_amt)                    private EditText mAmount;
+  @InjectView(R.id.pos_currency)               private Spinner mCurrency;
+  @InjectView(R.id.pos_accept_qr)              private ImageView mAcceptQr;
+  @InjectView(R.id.pos_menu)                   private ImageView mMenuButton;
+  @InjectView(R.id.pos_flipper)                private ViewFlipper mFlipper;
 
-  private EditText mAmount, mNotes;
-  private Button mSubmit;
-  private Spinner mCurrency;
+  @InjectResource(R.string.title_point_of_sale)
+  private String mTitle;
+
+  @InjectResource(R.string.pos_accept_waiting_error)
+  private String mOrderCheckErrorMessage;
+
+  @InjectResource(R.string.pos_accept_waiting)
+  private String mOrderCheckWaitingMessage;
+
+  @InjectResource(R.string.pos_result_completed)
+  private String mOrderCompletedMessage;
+
+  @InjectResource(R.color.pos_waiting_bad)
+  private int mOrderCheckErrorColor;
+
+  @InjectResource(R.color.pos_waiting_good)
+  private int mOrderCheckWaitingColor;
+
+  @Inject
+  private PINManager mPinManager;
+
+  @Inject
+  private LoginManager mLoginManager;
+
+  @Inject
+  private PreferencesManager mPreferencesManager;
+
   private String[] mCurrenciesArray;
-  private ViewFlipper mFlipper;
-
-  private ImageView mAcceptQr;
-  private TextView mAcceptDesc;
-  private TextView mAcceptStatus;
-  private Button mAcceptCancel;
-  private Button mLoadingCancel;
-
-  private TextView mResultStatus, mResultMessage;
-  private Button mResultOK;
-
-  private TextView mTipTitle;
-  private Button mTipCustom, mTipCustomConfirm;
-  private EditText mTipCustomField;
-  private TextView mTipCustomText;
-
   private View[] mHeaders;
   private TextView[] mHeaderTitles;
   private ImageView[] mHeaderLogos;
-  private ImageView mMenuButton;
+  private Activity mParent;
 
-  private Timer mCheckStatusTimer = null;
-  private CreateButtonTask mCreatingTask = null;
-
-  @Override
-  public void onSwitchedTo() {
-
-    if (mFlipper.getDisplayedChild() == INDEX_MAIN) {
-      mAmount.requestFocus();
-    }
-
-    ((CoinbaseActivity) mParent).getSupportActionBar().hide();
-  }
+  private Timer mCheckStatusTimer;
+  private CreateOrderTask mCreatingTask;
 
   @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-
-    mToneGenerator = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100);
-  }
-
-  @Override
-  public void onPINPromptSuccessfulReturn() {
-    // PIN menu is only opened when trying to access settings
-    new Handler().postDelayed(new Runnable() {
-      public void run() {
-        mParent.openOptionsMenu();
-      }
-    }, 1000);
-  }
-
-  private void switchToMain() {
-
-    mFlipper.setDisplayedChild(INDEX_MAIN);
-    mAmount.requestFocus();
-    setKeyboardVisible(true);
-  }
-
-  private void goToAddTip(String amount, String currency) {
-
-    CharSequence title = getString(R.string.pos_tip_title);
-    title = Html.fromHtml(String.format((String)title, amount, currency));
-    mTipTitle.setText(title);
-    mFlipper.setDisplayedChild(INDEX_ADD_TIP);
-    setKeyboardVisible(false);
+  public void onAttach(Activity activity) {
+    super.onAttach(activity);
+    mParent = activity;
   }
 
   @Override
   public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
     // Inflate the layout for this fragment
-    View view = inflater.inflate(R.layout.fragment_point_of_sale, container, false);
+    return inflater.inflate(R.layout.fragment_point_of_sale, container, false);
+  }
 
-    mAmount = (EditText) view.findViewById(R.id.pos_amt);
-    mNotes = (EditText) view.findViewById(R.id.pos_notes);
-    mSubmit = (Button) view.findViewById(R.id.pos_submit);
-    mCurrency = (Spinner) view.findViewById(R.id.pos_currency);
-    mFlipper = (ViewFlipper) view.findViewById(R.id.pos_flipper);
-
-    mAcceptCancel = (Button) view.findViewById(R.id.pos_accept_cancel);
-    mAcceptQr = (ImageView) view.findViewById(R.id.pos_accept_qr);
-    mAcceptDesc = (TextView) view.findViewById(R.id.pos_accept_desc);
-    mAcceptStatus = (TextView) view.findViewById(R.id.pos_accept_waiting);
-    mLoadingCancel = (Button) view.findViewById(R.id.pos_loading_cancel);
-
-    mResultStatus = (TextView) view.findViewById(R.id.pos_result_status);
-    mResultMessage = (TextView) view.findViewById(R.id.pos_result_msg);
-    mResultOK = (Button) view.findViewById(R.id.pos_result_ok);
+  @Override
+  public void onViewCreated(View view, Bundle savedInstanceState) {
+    super.onViewCreated(view, savedInstanceState);
 
     mSubmit.setTypeface(FontManager.getFont(mParent, "Roboto-Light"));
     mAcceptCancel.setTypeface(FontManager.getFont(mParent, "Roboto-Light"));
@@ -410,12 +285,11 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
     int qrSize = smallestWidth - (int) (100 * metrics.density);
     mAcceptQr.getLayoutParams().height = mAcceptQr.getLayoutParams().width = qrSize;
 
-    mMenuButton = (ImageView) view.findViewById(R.id.pos_menu);
     mMenuButton.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
 
-        if(!PINManager.getInstance().checkForEditAccess(getActivity())) {
+        if(!mPinManager.checkForEditAccess(getActivity())) {
           return;
         }
         mParent.openOptionsMenu();
@@ -423,10 +297,8 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
     });
 
     mLoadingCancel.setOnClickListener(new View.OnClickListener() {
-
       @Override
       public void onClick(View v) {
-
         if (mFlipper.getDisplayedChild() != INDEX_LOADING) return;
         mCreatingTask.cancel(true);
         switchToMain();
@@ -434,34 +306,33 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
     });
 
     mSubmit.setOnClickListener(new View.OnClickListener() {
-
       @Override
       public void onClick(View v) {
-
         if (mFlipper.getDisplayedChild() != INDEX_MAIN) return;
-        if ("".equals(mAmount.getText().toString()) ||
-                ".".equals(mAmount.getText().toString())) {
+
+        Money amount = getAmount();
+
+        if (amount.isZero()) {
           Toast.makeText(mParent, R.string.pos_empty_amount, Toast.LENGTH_SHORT).show();
           return;
         }
 
-        String amount = mAmount.getText().toString(), currency =
-                (String) mCurrency.getSelectedItem();
-        if (Utils.getPrefsBool(mParent, Constants.KEY_ACCOUNT_ENABLE_TIPPING, false)) {
-          goToAddTip(amount, currency);
+        if (mPreferencesManager.isTippingEnabled()) {
+          goToAddTip();
         } else {
-          startLoading(amount, currency);
+          startLoading(amount, getNotes());
         }
       }
     });
+
     mAcceptCancel.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
-
         if (mFlipper.getDisplayedChild() != INDEX_ACCEPT) return;
         stopAccepting();
       }
     });
+
     mResultOK.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View view) {
@@ -469,24 +340,24 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
         switchToMain();
       }
     });
-    
+
     initializeCurrencySpinner();
     mCurrency.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-
       @Override
       public void onItemSelected(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
-
+        updateCustomTipText();
         updateAmountHint();
       }
 
       @Override
       public void onNothingSelected(AdapterView<?> arg0) {
         // Ignore
-      }});
+      }
+    });
 
     // Headers
     int[] headers = { R.id.pos_accept_header, R.id.pos_main_header, R.id.pos_result_header,
-      R.id.pos_add_tip_header };
+            R.id.pos_add_tip_header };
 
     mHeaders = new View[headers.length];
     mHeaderTitles = new TextView[headers.length];
@@ -501,12 +372,6 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
       mHeaderLogos[i].setImageDrawable(null);
     }
 
-    // Tip
-    mTipTitle = (TextView) view.findViewById(R.id.pos_add_tip_title);
-    mTipCustom = (Button) view.findViewById(R.id.pos_add_tip_custom);
-    mTipCustomConfirm = (Button) view.findViewById(R.id.pos_add_tip_custom_confirm);
-    mTipCustomField = (EditText) view.findViewById(R.id.pos_add_tip_custom_field);
-    mTipCustomText = (TextView) view.findViewById(R.id.pos_add_tip_custom_text);
     mTipTitle.setTypeface(FontManager.getFont(mParent, "Roboto-Light"));
     mTipCustomConfirm.setTypeface(FontManager.getFont(mParent, "Roboto-Light"));
     mTipCustomField.setTypeface(FontManager.getFont(mParent, "Roboto-Light"));
@@ -528,8 +393,10 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
       tipButton.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View view) {
-
-          startLoading(calculateTipAmount((String) view.getTag(), true).toPlainString(), (String) mCurrency.getSelectedItem());
+          startLoading(
+                  getAmount().plus(calculateTipAmount(getAmount(), new BigDecimal((String) view.getTag()))),
+                  getNotes()
+          );
         }
       });
     }
@@ -563,36 +430,34 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
       @Override
       public void onClick(View view) {
         startLoading(
-                calculateTipAmount(mTipCustomField.getText().toString(), true).toPlainString(),
-                (String) mCurrency.getSelectedItem());
+                getAmount().plus(calculateTipAmount(getAmount(), getCustomTipPercentage())),
+                getNotes()
+        );
       }
     });
 
     updateCustomTipText();
-    return view;
   }
 
-  private BigDecimal calculateTipAmount(String percent, boolean forTotal) {
-    if ("".equals(percent)) {
-      percent = "0";
-    }
-    BigDecimal p = new BigDecimal(percent).multiply(new BigDecimal("0.01"));
-    if (forTotal) {
-      p = p.add(new BigDecimal("1"));
-    }
-    String amountText = mAmount.getText().toString();
-    BigDecimal amount = new BigDecimal(("".equals(amountText) || ".".equals(amountText)) ? "0" : amountText);
-    amount = amount.multiply(p, MathContext.DECIMAL128);
-    return amount;
+  private Money calculateTipAmount(Money amount, BigDecimal percent) {
+    BigDecimal p = percent.multiply(new BigDecimal("0.01"));
+    return amount.multipliedBy(p, RoundingMode.HALF_EVEN);
   }
 
   private void updateCustomTipText() {
-    BigDecimal amount = calculateTipAmount(mTipCustomField.getText().toString(), false);
-    //amount.setScale(2, BigDecimal.ROUND_UP);
-    mTipCustomText.setText(getString(R.string.pos_tip_custom_text, amount.toPlainString(), mCurrency.getSelectedItem()));
+    Money customTip = calculateTipAmount(getAmount(), getCustomTipPercentage());
+    mTipCustomText.setText(getString(R.string.pos_tip_custom_text, Utils.formatMoney(customTip)));
   }
 
-  private void startLoading(String amount, String currency) {
+  private void startLoading(Money total, String notes) {
+    com.coinbase.api.entity.Button button = new com.coinbase.api.entity.Button();
+    button.setDescription(notes);
+    button.setName(notes);
+    button.setPrice(total);
+
+
+    mCreatingTask = new CreateOrderTask(mParent, button);
+    mCreatingTask.execute();
 
     mTipCustomConfirm.setVisibility(View.GONE);
     mTipCustomField.setVisibility(View.GONE);
@@ -600,25 +465,20 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
     mTipCustom.setVisibility(View.VISIBLE);
     mTipCustomField.setText(null);
     mFlipper.setDisplayedChild(INDEX_LOADING);
-    mCreatingTask = new CreateButtonTask();
-    mCreatingTask.execute(amount, currency, mNotes.getText().toString());
+
     mAmount.setText(null);
   }
 
   private void initializeCurrencySpinner() {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String nativeCurrency = prefs.getString(String.format(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, activeAccount),
-        "usd").toUpperCase(Locale.CANADA);
+    CurrencyUnit nativeCurrency = mPreferencesManager.getNativeCurrency();
 
     mCurrenciesArray = new String[] {
-                                     "BTC",
-                                     nativeCurrency,
+            "BTC",
+            nativeCurrency.getCurrencyCode(),
     };
 
     ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(
-        mParent, R.layout.fragment_transfer_currency, Arrays.asList(mCurrenciesArray)) {
+            mParent, R.layout.fragment_transfer_currency, Arrays.asList(mCurrenciesArray)) {
 
       @Override
       public View getView(int position, View convertView, ViewGroup parent) {
@@ -640,94 +500,80 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
     mCurrency.setAdapter(arrayAdapter);
   }
 
-  @Override
-  public void onAttach(Activity activity) {
-    super.onAttach(activity);
-
-    mParent = (MainActivity) activity;
-  }
-
-  private void startAccepting(JSONObject order) throws JSONException {
-
-    String receiveAddress = order.getString("receive_address");
-    String amount = moneyToValue(order.getJSONObject("total_btc")).toPlainString();
-    String bitcoinUri = String.format("bitcoin:%1$s?amount=%2$s", receiveAddress, amount);
-    String orderId = order.getString("id");
-
-    String amountString = Utils.formatCurrencyAmount(amount) + " BTC";
-    if (!order.getJSONObject("total_native").getString("currency_iso").equals("BTC")) {
-      amountString += String.format(" (%1$s %2$s)", Utils.formatCurrencyAmount(
-              moneyToValue(order.getJSONObject("total_native")),
-              false,
-              Utils.CurrencyType.TRADITIONAL), order.getJSONObject("total_native").getString("currency_iso"));
-    }
-
-    Bitmap bitmap;
-    try {
-      bitmap = Utils.createBarcode(bitcoinUri, BarcodeFormat.QR_CODE, 512, 512);
-    } catch (WriterException e) {
-      e.printStackTrace();
-      bitmap = null;
-    }
-    mAcceptQr.setImageBitmap(bitmap);
-    mAcceptDesc.setText(getString(R.string.pos_accept_message, amountString));
-
-    mCheckStatusTimer = new Timer();
-    mCheckStatusTimer.schedule(new CheckStatusTask(mParent, mAcceptStatus, orderId), CHECK_PERIOD, CHECK_PERIOD);
-
-    mFlipper.setDisplayedChild(INDEX_ACCEPT);
+  private void goToAddTip() {
+    CharSequence title = getString(R.string.pos_tip_title);
+    title = Html.fromHtml(String.format((String)title, Utils.formatMoney(getAmount())));
+    mTipTitle.setText(title);
+    mFlipper.setDisplayedChild(INDEX_ADD_TIP);
     setKeyboardVisible(false);
   }
 
-  private void stopAccepting() {
-
-    mCheckStatusTimer.cancel();
-    mCheckStatusTimer = null;
-    showResult("cancelled", R.string.pos_result_failure_cancel, null);
-  }
-
-  private void paymentAccepted(final JSONObject order) {
-
+  private void onOrderCheckError() {
     mCheckStatusTimer.cancel();
     mCheckStatusTimer = null;
 
     mParent.runOnUiThread(new Runnable() {
       @Override
       public void run() {
-        showResult(order.optString("status"), null, order);
+        mAcceptStatus.setTextColor(Color.WHITE);
+        mAcceptStatus.setBackgroundColor(mOrderCheckErrorColor);
+        mAcceptStatus.setText(mOrderCheckErrorMessage);
       }
     });
   }
 
-  private void showResult(String status, int message, JSONObject order) {
-    showResult(status, mParent.getString(message), order);
+  private void onOrderCheckCompleted(int numTries) {
+    int numElipses = ((numTries - 1) % 3) + 1;
+    String elipses = StringUtils.repeat('.', numElipses) + StringUtils.repeat(' ', 3 - numElipses);
+
+    final String text = mOrderCheckWaitingMessage.replace("...", "") + elipses;
+
+    mParent.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        mAcceptStatus.setTextColor(Color.BLACK);
+        mAcceptStatus.setBackgroundColor(mOrderCheckWaitingColor);
+        mAcceptStatus.setText(text);
+      }
+    });
   }
 
-  private void showResult(String status, String _message, JSONObject order) {
+  private void onPaymentAccepted(final Order order) {
+    mCheckStatusTimer.cancel();
+    mCheckStatusTimer = null;
+
+    mParent.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        showResult(order.getStatus(), null, order);
+      }
+    });
+  }
+
+  private void showResult(Order.Status status, String message, Order order) {
+    CharSequence text;
+    int color;
 
     if (status == null) {
-      status = "ERROR";
-    } else {
-      status = status.toUpperCase(Locale.CANADA);
-    }
-
-    CharSequence message;
-    int color;
-    int tone = ToneGenerator.TONE_DTMF_1;
-    if ("COMPLETED".equals(status)) {
-
-      String orderId = order.optString("id");
-      String amount = Utils.formatCurrencyAmount(moneyToValue(order.optJSONObject("total_native")), false, Utils.CurrencyType.TRADITIONAL);
-      String currency = order.optJSONObject("total_native").optString("currency_iso").toUpperCase(Locale.CANADA);
-      message = Html.fromHtml(String.format("<b>Order %1$s</b><br>%2$s", orderId, getString(R.string.pos_result_completed, amount, currency)));
-      color = R.color.pos_result_completed;
-      tone = ToneGenerator.TONE_DTMF_9;
-    } else if ("MISPAID".equals(status)) {
-      message = getString(R.string.pos_result_mispaid);
-      color = R.color.pos_result_mispaid;
-    } else {
       color = R.color.pos_result_error;
-      message = _message;
+      text = message;
+    } else {
+      switch (status) {
+        case COMPLETED:
+          text = Html.fromHtml(String.format("<b>Order %1$s</b><br>%2$s",
+                  order.getId(),
+                  String.format(mOrderCompletedMessage, Utils.formatMoney(order.getTotalNative()))
+          ));
+          color = R.color.pos_result_completed;
+          break;
+        case MISPAID:
+          text = getString(R.string.pos_result_mispaid);
+          color = R.color.pos_result_mispaid;
+          break;
+        default:
+          color = R.color.pos_result_error;
+          text = message;
+      }
     }
 
     float radius = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 3, mParent.getResources().getDisplayMetrics());
@@ -736,29 +582,77 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
     background.getPaint().setColor(mParent.getResources().getColor(color));
     mResultStatus.setBackgroundDrawable(background);
 
-    mResultStatus.setText(status);
-    mResultMessage.setText(message);
+    mResultStatus.setText(status.toString().toUpperCase());
+    mResultMessage.setText(text);
     mFlipper.setDisplayedChild(INDEX_RESULT);
     setKeyboardVisible(false);
     ((Vibrator) mParent.getSystemService(Context.VIBRATOR_SERVICE)).vibrate(500);
-    // mToneGenerator.startTone(tone, 500);
   }
 
-  private BigDecimal moneyToValue(JSONObject money) {
-
-    String currency = money.optString("currency_iso");
-    BigDecimal cents = new BigDecimal(money.optString("cents"));
-    BigDecimal result;
-    if ("BTC".equals(currency)) {
-      result = cents.multiply(new BigDecimal(0.00000001), MathContext.DECIMAL128);
-    } else {
-      result = cents.multiply(new BigDecimal(0.01), MathContext.DECIMAL128);
+  @Override
+  public void onSwitchedTo() {
+    if (mFlipper.getDisplayedChild() == INDEX_MAIN) {
+      mAmount.requestFocus();
     }
-    return result.setScale(10, BigDecimal.ROUND_HALF_UP).stripTrailingZeros();
+
+    getSherlockActivity().getSupportActionBar().hide();
+  }
+
+  @Override
+  public void onPINPromptSuccessfulReturn() {
+    // PIN menu is only opened when trying to access settings
+    new Handler().postDelayed(new Runnable() {
+      public void run() {
+        mParent.openOptionsMenu();
+      }
+    }, 1000);
+  }
+
+  @Override
+  public String getTitle() {
+    return mTitle;
+  }
+
+  private void startAccepting(Order order) {
+    Money btcAmount = order.getTotalBtc();
+    Money nativeAmount = order.getTotalNative();
+
+    BitcoinUri uri = new BitcoinUri();
+    uri.setAmount(btcAmount.getAmount());
+    uri.setAddress(order.getReceiveAddress());
+
+    String uriString = uri.toString();
+
+    String amountString;
+
+    if (!nativeAmount.getCurrencyUnit().getCurrencyCode().equalsIgnoreCase("BTC")) {
+      amountString = String.format(
+              "%1$s (%2$s)",
+              Utils.formatMoney(btcAmount),
+              Utils.formatMoney(nativeAmount)
+      );
+    } else {
+      amountString = Utils.formatMoney(btcAmount);
+    }
+
+    Bitmap bitmap;
+    try {
+      bitmap = Utils.createBarcode(uriString, BarcodeFormat.QR_CODE, 512, 512);
+    } catch (WriterException e) {
+      e.printStackTrace();
+      bitmap = null;
+    }
+    mAcceptQr.setImageBitmap(bitmap);
+    mAcceptDesc.setText(getString(R.string.pos_accept_message, amountString));
+
+    mCheckStatusTimer = new Timer();
+    mCheckStatusTimer.schedule(new CheckStatusTask(order), CHECK_PERIOD, CHECK_PERIOD);
+
+    mFlipper.setDisplayedChild(INDEX_ACCEPT);
+    setKeyboardVisible(false);
   }
 
   private void setKeyboardVisible(boolean visible) {
-
     InputMethodManager inputMethodManager = (InputMethodManager) mParent.getSystemService(Context.INPUT_METHOD_SERVICE);
 
     if(visible) {
@@ -768,45 +662,80 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
     }
   }
 
+  private void stopAccepting() {
+    mCheckStatusTimer.cancel();
+    mCheckStatusTimer = null;
+    showResult(Order.Status.CANCELED, getString(R.string.pos_result_failure_cancel), null);
+  }
+
+  private Money getAmount() {
+    Money quantity = Money.of(getCurrency(), 0);
+    try {
+      quantity = Money.of(
+              getCurrency(),
+              new BigDecimal(mAmount.getText().toString())
+      );
+      // Only positive quantities are valid
+      if (quantity.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        quantity = null;
+      }
+    } catch (Exception ex) {}
+    return quantity;
+  }
+
+  private String getNotes() {
+    return mNotes.getText().toString();
+  }
+
+  private BigDecimal getCustomTipPercentage() {
+    BigDecimal result;
+    try {
+      result = new BigDecimal(mTipCustomField.getText().toString());
+    } catch (Exception ex) {
+      result = BigDecimal.ZERO;
+    }
+    return result;
+  }
+
+  private CurrencyUnit getCurrency() {
+    return CurrencyUnit.of((String) mCurrency.getSelectedItem());
+  }
+
+  private void switchToMain() {
+    mFlipper.setDisplayedChild(INDEX_MAIN);
+    mAmount.requestFocus();
+    setKeyboardVisible(true);
+  }
+
+  private void updateAmountHint() {
+    // Update text hint
+    String currency = mCurrenciesArray[mCurrency.getSelectedItemPosition()];
+    mAmount.setHint(String.format(
+            getString(R.string.pos_amt),
+            getCurrency().getCurrencyCode().toUpperCase()
+    ));
+  }
+
+  public void refresh() {
+    new LoadMerchantInfoTask(mParent).execute();
+  }
+
   @Override
   public void onStart() {
     super.onStart();
 
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String notes = prefs.getString(String.format(Constants.KEY_ACCOUNT_POS_NOTES, activeAccount), "");
-    boolean btcPrices = prefs.getBoolean(String.format(Constants.KEY_ACCOUNT_POS_BTC_AMT, activeAccount), false);
-    mNotes.setText(notes);
-    mCurrency.setSelection(btcPrices ? 0 : 1);
+    mNotes.setText(mPreferencesManager.getSavedMerchantNotes());
+    mCurrency.setSelection(mPreferencesManager.posUsesBtc() ? 0 : 1);
+
+    refresh();
   }
 
   @Override
   public void onStop() {
+    mPreferencesManager.saveMerchantNotes(getNotes());
+    mPreferencesManager.setPosUsesBtc(mCurrency.getSelectedItemPosition() == 0);
+
     super.onStop();
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    Editor e = prefs.edit();
-    e.putString(String.format(Constants.KEY_ACCOUNT_POS_NOTES, activeAccount), mNotes.getText().toString());
-    e.putBoolean(String.format(Constants.KEY_ACCOUNT_POS_BTC_AMT, activeAccount), mCurrency.getSelectedItemPosition() == 0);
-    e.commit();
-  }
-  
-  private void updateAmountHint() {
-
-    // Update text hint
-    String currency = mCurrenciesArray[mCurrency.getSelectedItemPosition()];
-    mAmount.setHint(String.format(getString(R.string.pos_amt), currency.toUpperCase(Locale.CANADA)));
   }
 
-
-  public void refresh() {
-
-    new LoadMerchantInfoTask().execute();
-  }
-
-  @Override
-  public String getTitle() {
-    return getString(R.string.title_point_of_sale);
-  }
 }

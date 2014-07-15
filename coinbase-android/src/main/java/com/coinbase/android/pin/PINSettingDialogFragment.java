@@ -11,15 +11,21 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.DialogFragment;
-import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
 
 import com.coinbase.android.Constants;
 import com.coinbase.android.R;
+import com.coinbase.android.Utils;
+import com.coinbase.android.event.UserDataUpdatedEvent;
+import com.coinbase.api.LoginManager;
+import com.google.inject.Inject;
+import com.squareup.otto.Bus;
 
-public class PINSettingDialogFragment extends DialogFragment {
+import roboguice.fragment.RoboDialogFragment;
+
+public class PINSettingDialogFragment extends RoboDialogFragment {
+
+  @Inject protected LoginManager mLoginManager;
+  @Inject protected Bus mBus;
 
   private int mSelectedOption = 0;
 
@@ -40,9 +46,8 @@ public class PINSettingDialogFragment extends DialogFragment {
     }
 
     final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-    final int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    final String pinKey = String.format(Constants.KEY_ACCOUNT_PIN, activeAccount);
-    final String viewAllowedKey = String.format(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccount);
+    final String pinKey = Constants.KEY_ACCOUNT_PIN;
+    final String viewAllowedKey = Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED;
 
     // Update currently selected option
     if(prefs.getString(pinKey, null) == null) {
@@ -80,6 +85,8 @@ public class PINSettingDialogFragment extends DialogFragment {
 
         e.commit();
 
+        mBus.post(new UserDataUpdatedEvent());
+
         if(mSelectedOption != itemsList.indexOf(R.string.account_android_pin_none)) {
           startSetPinPrompt();
         }
@@ -99,7 +106,6 @@ public class PINSettingDialogFragment extends DialogFragment {
   }
 
   private void startSetPinPrompt() {
-
     Intent intent = new Intent(getActivity(), PINPromptActivity.class);
     intent.setAction(PINPromptActivity.ACTION_SET);
     startActivity(intent);

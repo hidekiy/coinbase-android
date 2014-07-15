@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="roboguice_modules">
+        <item>com.coinbase.android.settings.PreferencesManagerModule</item>
+        <item>com.coinbase.api.LoginManagerModule</item>
+        <item>com.coinbase.android.event.BusModule</item>
+    </string-array>
+</resources>

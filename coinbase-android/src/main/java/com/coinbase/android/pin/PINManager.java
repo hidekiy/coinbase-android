@@ -9,28 +9,24 @@ import android.preference.PreferenceManager;
 
 import com.coinbase.android.Constants;
 import com.coinbase.android.MainActivity;
+import com.coinbase.android.Utils;
+import com.coinbase.android.event.UserDataUpdatedEvent;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import com.squareup.otto.Bus;
 
-
+@Singleton
 public class PINManager {
 
   public static final long PIN_REPROMPT_TIME = 2 * 1000; // Five seconds
 
-  private static PINManager INSTANCE = null;
-
-  public static PINManager getInstance() {
-
-    if(INSTANCE == null) {
-      INSTANCE = new PINManager();
-    }
-
-    return INSTANCE;
-  }
-
-  private PINManager() { }
+  public PINManager () {}
 
   boolean bad = false;
 
   private static boolean isQuitPINLock = false;
+
+  @Inject protected Bus mBus;
 
   /**
    * Should the user be allowed to access protected content?
@@ -40,50 +36,48 @@ public class PINManager {
   public boolean shouldGrantAccess(Context context) {
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
 
     // Does the user have a PIN?
-    boolean hasPin = prefs.getString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), null) != null;
+    boolean hasPin = prefs.getString(Constants.KEY_ACCOUNT_PIN, null) != null;
     if(!hasPin) {
       return true;
     }
 
     // Is the PIN edit-only?
-    boolean pinViewAllowed = prefs.getBoolean(String.format(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccount), false);
+    boolean pinViewAllowed = prefs.getBoolean(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, false);
     if(pinViewAllowed) {
       return true;
     }
 
     // Is a reprompt required?
-    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(String.format(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, activeAccount), -1);
+    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, -1);
     return timeSinceReprompt < PIN_REPROMPT_TIME;
   }
 
   /**
    * Should the user be allowed to edit protected content? If not, PIN prompt will be started.
-   * @param context
+   * @param activity
    * @return true if you should proceed with the edit
    */
   public boolean checkForEditAccess(Activity activity) {
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(activity);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
 
     // Does the user have a PIN?
-    boolean hasPin = prefs.getString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), null) != null;
+    boolean hasPin = prefs.getString(Constants.KEY_ACCOUNT_PIN, null) != null;
     if(!hasPin) {
       return true;
     }
 
     // Is the PIN edit-only?
-    boolean pinViewAllowed = prefs.getBoolean(String.format(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccount), false);
+    boolean pinViewAllowed = prefs.getBoolean(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, false);
     if(!pinViewAllowed) {
       // Still prompt for edits even if view is protected...
       // return true;
     }
 
     // Is a reprompt required?
-    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(String.format(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, activeAccount), -1);
+    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, -1);
     boolean repromptRequired = timeSinceReprompt > PIN_REPROMPT_TIME;
 
     if(repromptRequired) {
@@ -101,11 +95,9 @@ public class PINManager {
    * Called after the user has entered the PIN successfully.
    */
   public void resetPinClock(Context context) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     Editor e = prefs.edit();
-    e.putLong(String.format(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, activeAccount), System.currentTimeMillis());
+    e.putLong(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, System.currentTimeMillis());
     e.commit();
   }
 
@@ -113,12 +105,11 @@ public class PINManager {
    * Set the user's PIN.
    */
   public void setPin(Context context, String pin) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     Editor e = prefs.edit();
-    e.putString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), pin);
+    e.putString(Constants.KEY_ACCOUNT_PIN, pin);
     e.commit();
+    mBus.post(new UserDataUpdatedEvent());
   }
 
   /**

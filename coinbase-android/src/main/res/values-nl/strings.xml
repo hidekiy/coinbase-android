@@ -46,7 +46,7 @@
     <string name="menu_barcode">Scan barcode</string>
     <string name="buysell_type_buy">Koop</string>
     <string name="buysell_type_sell">Verkoop</string>
-    <string name="buysell_type_price">voor $%1$s elk</string>
+    <string name="buysell_type_price">voor %1$s elk</string>
     <string name="buysell_type_price_error">(kan prijs niet laden)</string>
     <string name="buysell_type_buy_text">Koop</string>
     <string name="buysell_type_sell_text">Verkoop</string>
@@ -56,10 +56,10 @@
     <string name="buysell_submit_buy">Koop Bitcoins</string>
     <string name="buysell_submit_sell">Verkoop Bitcoins</string>
     <string name="buysell_total_error">Kan geen prijs krijgen</string>
-    <string name="buysell_confirm_message_buy">Weet je het zeker dat je %1$s BTC voor $%2$s %3$s wilt kopen? Je huidige bankrekening zal worden gecrediteerd.</string>
-    <string name="buysell_confirm_message_sell">Weet je het zeker dat je %1$s BTC voor $%2$s %3$s wilt verkopen? Je huidige bankrekening zal worden gecrediteerd.</string>
+    <string name="buysell_confirm_message_buy">Weet je het zeker dat je %1$s voor %2$s wilt kopen? Je huidige bankrekening zal worden gecrediteerd.</string>
+    <string name="buysell_confirm_message_sell">Weet je het zeker dat je %1$s voor %2$s wilt verkopen? Je huidige bankrekening zal worden gecrediteerd.</string>
     <string name="buysell_error_exception">De aanvraag kon niet worden voltooid.</string>
-    <string name="buysell_error_api">De aanvraag kon niet worden voltooid.\n\n%1$s</string>
+    <string name="buysell_error_api">De aanvraag kon niet worden voltooid.</string>
     <string name="buysell_progress">Versturen&#8230;</string>
     <string name="buysell_success_buy">%1$s BTC gekocht.</string>
     <string name="buysell_success_sell">%1$s BTC verkocht.</string>
@@ -97,9 +97,9 @@
     <string name="menu_about">Over</string>
     <string name="menu_help">Help</string>
     <string name="transfer_recipient">Ontvanger email of bitcoin adres</string>
-    <string name="transfer_confirm_message_send">Weet je het zeker dat je %1$s %3$s wilt versturen naar %2$s?</string>
-    <string name="transfer_confirm_message_request">Weet jet het zeker dat je %1$s %3$s wilt vragen van %2$s?</string>
-    <string name="transfer_confirm_message_send_fee">Deze transactie heeft een fee van %4$s BTC om te worden geacepteerd in het bitcoin netwerk. Weet je het zeker dat je %1$s %3$s wilt sturen naar %2$s?</string>
+    <string name="transfer_confirm_message_send">Weet je het zeker dat je %1$s wilt versturen naar %2$s?</string>
+    <string name="transfer_confirm_message_request">Weet jet het zeker dat je %1$s wilt vragen van %2$s?</string>
+    <string name="transfer_confirm_message_send_fee">Deze transactie heeft een fee van %3$s BTC om te worden geacepteerd in het bitcoin netwerk. Weet je het zeker dat je %1$s wilt sturen naar %2$s?</string>
     <string name="transfer_error_exception">De aanvraag kon niet worden voltooid.</string>
     <string name="transfer_error_api">De aanvraag kon niet worden voltooid\n\n%1$s</string>
     <string name="transfer_progress">Versturen&#8230;</string>
@@ -114,7 +114,7 @@
     <string name="menu_refresh">Refresh</string>
     <string name="transfer_nfc_ready">NFC is uitgeschakeld.\n\nHoud de achterzijde van je apparaat tegen de achterkant van een ander apparaat en klik op het scherm.</string>
     <string name="transfer_nfc_failure">Kon NFC transfer niet starten.</string>
-    <string name="transfer_email_prompt_text">Verzoek %1$s %2$s van:</string>
+    <string name="transfer_email_prompt_text">Verzoek %1$s van:</string>
     <string name="transfer_email_prompt_hint">Voer email adres in</string>
     <string name="transactiondetails_request_resend">Verstuur Aaanvraag</string>
     <string name="transactiondetails_request_cancel">Annuleer Aanvraag</string>
@@ -128,7 +128,7 @@
     <string name="transactiondetails_title">Transactie details</string>
     <string name="transactiondetails_progress">Versturen&#8230;</string>
     <string name="transactiondetails_action_error">Kan geen actie ondernemen op de transactie(%1$s).</string>
-    <string name="wallet_balance_home">≈ %1$s %2$s</string>
+    <string name="wallet_balance_home">≈ %1$s</string>
     <string name="account_name">Naam</string>
     <string name="account_email">Email</string>
     <string name="account_time_zone">Tijdzone</string>
@@ -141,7 +141,7 @@
     <string name="account_save_error">Kan de accountinstellingen niet opslaan.</string>
     <string name="account_save_progress">Bewaren...</string>
     <string name="buysell_help">Bezoek https://coinbase.com in je browser om een bankrekening toe te voegen aan je Coinbase account.</string>
-    <string name="transfer_amt_native">≈ %1$s %2$s</string>
+    <string name="transfer_amt_native">≈ %1$s</string>
     <string name="transactions_refresh_error">Kan transacties niet synchroniseren.</string>
     <string name="account_limits">Je koop / verkoop limiet</string>
     <string name="account_limits_text">Koop %1$s %2$s per dag, verkoop %3$s %4$s per dag</string>
@@ -178,8 +178,9 @@
     <string name="pos_result_failure_creation">Kon order niet creeëren.</string>
     <string name="pos_result_failure_creation_exception">Kon order (%1$s) niet creeëren.</string>
     <string name="waiting_for_payment">Wachten op betaling...</string>
-    <string name="payment_received">%1$s BTC (%2$s %3$s) ontvangen.</string>
-    <string name="payment_received_short">%1$s BTC (%2$s %3$s) ontvangen, maar je verzocht %4$s BTC.</string>
+    <string name="payment_received">%1$s ontvangen.</string>
+    <string name="payment_received_native">%1$s (%2$s) ontvangen.</string>
+    <string name="payment_received_short">%1$s ontvangen, maar je verzocht %2$s.</string>
     <string name="pos_description">De Point of Sale tab is een simpel overzicht van de Verstuur / Ontvang tab, geoptimaliseerd voor handelaars.</string>
     <string name="account_android_pin">Android app toegagscode</string>
     <string name="account_android_pin_all">Verplicht toegangscode om de app te openen</string>

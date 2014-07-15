@@ -1,20 +1,23 @@
 package com.coinbase.android;
 
-import java.io.IOException;
-
-import org.json.JSONException;
-
 import android.app.Service;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
-import com.coinbase.api.RpcManager;
+import com.coinbase.api.LoginManager;
+import com.coinbase.api.exception.CoinbaseException;
+import com.google.inject.Inject;
 
-public class UpdateWidgetBalanceService extends Service {
+import org.joda.money.Money;
+
+import java.io.IOException;
+
+import roboguice.service.RoboService;
+
+public class UpdateWidgetBalanceService extends RoboService {
 
   public static interface WidgetUpdater {
     public void updateWidget(Context context, AppWidgetManager manager, int appWidgetId, String balance);
@@ -23,7 +26,8 @@ public class UpdateWidgetBalanceService extends Service {
   public static String EXTRA_WIDGET_ID = "widget_id";
   public static String EXTRA_UPDATER_CLASS = "updater_class";
 
-
+  @Inject
+  private LoginManager mLoginManager;
 
   @Override
   public int onStartCommand(Intent intent, int flags, final int startId) {
@@ -36,8 +40,8 @@ public class UpdateWidgetBalanceService extends Service {
 
         try {
 
-          int accountId = PreferenceManager.getDefaultSharedPreferences(UpdateWidgetBalanceService.this).getInt(
-              String.format(Constants.KEY_WIDGET_ACCOUNT, widgetId), -1);
+          String accountId = PreferenceManager.getDefaultSharedPreferences(UpdateWidgetBalanceService.this).getString(
+                  String.format(Constants.KEY_WIDGET_ACCOUNT, widgetId), null);
 
 
           // Step 1: Update widget without balance
@@ -45,21 +49,21 @@ public class UpdateWidgetBalanceService extends Service {
           WidgetUpdater updater = (WidgetUpdater) updaterClass.newInstance();
           updater.updateWidget(UpdateWidgetBalanceService.this, manager, widgetId, null);
 
-          // Step 2: Fetch balance
-          String balance;
-          if(accountId == -1) {
-            balance = "";
+          // Step 2: Fetch balance for primary account
+          String balanceText;
+          if(accountId == null) {
+            balanceText = "";
           } else {
+            balanceText = "";
             Log.i("Coinbase", "Service fetching balance... [" + updaterClass.getSimpleName() + "]");
-            balance = RpcManager.getInstance().callGetOverrideAccount(
-                UpdateWidgetBalanceService.this, "account/balance", accountId).getString("amount");
-            balance = Utils.formatCurrencyAmount(balance);
+            Money balance = mLoginManager.getClient(accountId).getBalance();
+            balanceText = Utils.formatMoney(balance);
           }
 
           // Step 3: Update widget
-          updater.updateWidget(UpdateWidgetBalanceService.this, manager, widgetId, balance);
+          updater.updateWidget(UpdateWidgetBalanceService.this, manager, widgetId, balanceText);
 
-        } catch(JSONException e) {
+        } catch(CoinbaseException e) {
           e.printStackTrace();
         } catch (InstantiationException e) {
           e.printStackTrace();

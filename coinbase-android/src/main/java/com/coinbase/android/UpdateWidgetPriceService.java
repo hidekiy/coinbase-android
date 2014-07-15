@@ -7,17 +7,15 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 
-import com.coinbase.api.RpcManager;
+import com.coinbase.api.LoginManager;
+import com.google.inject.Inject;
 
-import org.apache.http.message.BasicNameValuePair;
-import org.json.JSONException;
+import org.joda.money.CurrencyUnit;
+import org.joda.money.Money;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import roboguice.service.RoboService;
 
-public class UpdateWidgetPriceService extends Service {
+public class UpdateWidgetPriceService extends RoboService {
 
   public static interface WidgetUpdater {
     public void updateWidget(Context context, AppWidgetManager manager, int appWidgetId, String balance);
@@ -26,7 +24,8 @@ public class UpdateWidgetPriceService extends Service {
   public static String EXTRA_WIDGET_ID = "widget_id";
   public static String EXTRA_UPDATER_CLASS = "updater_class";
 
-
+  @Inject
+  private LoginManager mLoginManager;
 
   @Override
   public int onStartCommand(Intent intent, int flags, final int startId) {
@@ -39,8 +38,10 @@ public class UpdateWidgetPriceService extends Service {
 
         try {
 
-          String currency = PreferenceManager.getDefaultSharedPreferences(UpdateWidgetPriceService.this).getString(
+          String currencyCode = PreferenceManager.getDefaultSharedPreferences(UpdateWidgetPriceService.this).getString(
                   String.format(Constants.KEY_WIDGET_CURRENCY, widgetId), "USD");
+
+          CurrencyUnit currency = CurrencyUnit.getInstance(currencyCode);
 
           // Step 1: Update widget without price
           AppWidgetManager manager = AppWidgetManager.getInstance(UpdateWidgetPriceService.this);
@@ -48,23 +49,14 @@ public class UpdateWidgetPriceService extends Service {
           updater.updateWidget(UpdateWidgetPriceService.this, manager, widgetId, null);
 
           // Step 2: Fetch price
-          String price;
-          List<BasicNameValuePair> getParams = new ArrayList<BasicNameValuePair>();
-          getParams.add(new BasicNameValuePair("currency", currency));
-          price = RpcManager.getInstance().callGet(UpdateWidgetPriceService.this,
-                  "prices/spot_rate", getParams).getString("amount");
-          price = Utils.formatCurrencyAmount(new BigDecimal(price), false, Utils.CurrencyType.TRADITIONAL);
+          String priceString;
+          Money spotPrice = mLoginManager.getClient().getSpotPrice(currency);
+          priceString = Utils.formatCurrencyAmount(spotPrice.getAmount(), false, Utils.CurrencyType.TRADITIONAL);
 
           // Step 3: Update widget
-          updater.updateWidget(UpdateWidgetPriceService.this, manager, widgetId, price);
+          updater.updateWidget(UpdateWidgetPriceService.this, manager, widgetId, priceString);
 
-        } catch(JSONException e) {
-          e.printStackTrace();
-        } catch (InstantiationException e) {
-          e.printStackTrace();
-        } catch (IllegalAccessException e) {
-          e.printStackTrace();
-        } catch (IOException e) {
+        } catch(Exception e) {
           e.printStackTrace();
         }
 

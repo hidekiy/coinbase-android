@@ -25,22 +25,29 @@ import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.FrameLayout;
 
-import com.coinbase.android.db.DatabaseObject;
-import com.coinbase.android.db.TransactionsDatabase;
-import com.coinbase.api.RpcManager;
+import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.AccountChange;
+import com.coinbase.api.entity.Contact;
+import com.coinbase.api.entity.Transaction;
+import com.coinbase.api.entity.User;
+import com.google.inject.Inject;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
-import com.squareup.otto.Bus;
 
-import org.apache.http.message.BasicNameValuePair;
+import org.joda.money.BigMoney;
+import org.joda.money.BigMoneyProvider;
+import org.joda.money.format.MoneyAmountStyle;
+import org.joda.money.format.MoneyFormatter;
+import org.joda.money.format.MoneyFormatterBuilder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.NumberFormat;
@@ -50,24 +57,13 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 
+import roboguice.RoboGuice;
+
+import static java.lang.Math.min;
+
 public class Utils {
 
   private Utils() { }
-
-  public static final void showMessageDialog(FragmentManager m, String message) {
-
-    MessageDialogFragment fragment = new MessageDialogFragment();
-    Bundle args = new Bundle();
-    args.putString(MessageDialogFragment.ARG_MESSAGE, message);
-    fragment.setArguments(args);
-
-    try {
-      fragment.show(m, "Utils.showMessageDialog");
-    } catch(IllegalStateException e) {
-      // Expected if application has been destroyed
-      // Ignore
-    }
-  }
 
   public static enum CurrencyType {
     BTC(8, 2),
@@ -87,8 +83,12 @@ public class Utils {
   public static class ContactsAutoCompleteAdapter extends ArrayAdapter<String> implements Filterable {
     private ArrayList<String> resultList;
 
+    @Inject
+    private LoginManager mLoginManager;
+
     public ContactsAutoCompleteAdapter(Context context, int textViewResourceId) {
       super(context, textViewResourceId);
+      RoboGuice.getInjector(context).injectMembers(this);
     }
 
     @Override
@@ -103,7 +103,7 @@ public class Utils {
 
     @Override
     public Filter getFilter() {
-      Filter filter = new Filter() {
+      return new Filter() {
         @Override
         protected FilterResults performFiltering(CharSequence constraint) {
           FilterResults filterResults = new FilterResults();
@@ -126,21 +126,18 @@ public class Utils {
           else {
             notifyDataSetInvalidated();
           }
-        }};
-      return filter;
+        }
+      };
     }
 
     private ArrayList<String> fetchContacts(String filter) {
       ArrayList<String> result = new ArrayList<String>();
 
       try {
-
-        List<BasicNameValuePair> getParams = new ArrayList<BasicNameValuePair>();
-        getParams.add(new BasicNameValuePair("query", filter));
-        JSONArray response = RpcManager.getInstance().callGet(getContext(), "contacts", getParams)
-                .getJSONArray("contacts");
-        for (int i = 0; i < response.length(); i++) {
-          result.add(response.getJSONObject(i).getJSONObject("contact").optString("email"));
+        List<Contact> contacts =
+                mLoginManager.getClient().getContacts(filter).getContacts();
+        for (Contact contact : contacts) {
+          result.add(contact.getEmail());
         }
       } catch (Exception e) {
         e.printStackTrace();
@@ -200,9 +197,48 @@ public class Utils {
       mChildOfContent.getWindowVisibleDisplayFrame(r);
       return (r.bottom - r.top);
     }
-
   }
 
+  public static final String formatMoney(BigMoneyProvider money) {
+    MoneyFormatter formatter;
+
+    if (money.toBigMoney().getCurrencyUnit().getCurrencyCode().equalsIgnoreCase("BTC")) {
+      // Need to specify bitcoin symbol
+      formatter = new MoneyFormatterBuilder()
+              .appendLiteral("\u0E3F")
+              .appendAmount(MoneyAmountStyle.LOCALIZED_NO_GROUPING)
+              .toFormatter();
+
+      // Strip trailing zeros past four decimal places
+      BigDecimal displayAmount = money.toBigMoney().getAmount().stripTrailingZeros();
+      if (displayAmount.scale() < 4) {
+        displayAmount = displayAmount.setScale(4);
+      }
+      money = BigMoney.of (
+              money.toBigMoney().getCurrencyUnit(),
+              displayAmount
+      );
+    } else {
+      // Build money formatter from default locale
+      formatter = new MoneyFormatterBuilder()
+              .appendCurrencySymbolLocalized()
+              .appendAmountLocalized()
+              .toFormatter();
+    }
+
+    String result = formatter.print(money);
+    return result;
+  }
+
+  public static final String formatMoneyRounded(BigMoneyProvider money, int scale) {
+    BigMoney rounded = money.toBigMoney().withScale(scale, RoundingMode.HALF_EVEN);
+
+    return formatMoney(rounded);
+  }
+
+  public static final String formatMoneyRounded(BigMoneyProvider money) {
+    return formatMoneyRounded(money, min(4, money.toBigMoney().getCurrencyUnit().getDecimalPlaces()));
+  }
 
   public static final String formatCurrencyAmount(String amount) {
     return formatCurrencyAmount(new BigDecimal(amount), false, CurrencyType.BTC);
@@ -210,14 +246,6 @@ public class Utils {
 
   public static final String formatCurrencyAmount(BigDecimal amount) {
     return formatCurrencyAmount(amount, false, CurrencyType.BTC);
-  }
-
-  public static final String formatCurrencyAmount(String amount, boolean ignoreSign) {
-    return formatCurrencyAmount(new BigDecimal(amount), ignoreSign, CurrencyType.BTC);
-  }
-
-  public static final String formatCurrencyAmount(String amount, boolean ignoreSign, CurrencyType type) {
-    return formatCurrencyAmount(new BigDecimal(amount), ignoreSign, type);
   }
 
   public static final String formatCurrencyAmount(BigDecimal balanceNumber, boolean ignoreSign, CurrencyType type) {
@@ -264,36 +292,87 @@ public class Utils {
     return new ContactsAutoCompleteAdapter(context, android.R.layout.simple_spinner_dropdown_item);
   }
 
-  public static CharSequence generateTransactionSummary(Context c, JSONObject t) throws JSONException {
+  public static CharSequence generateDelayedTransactionSummary(Context c, Transaction tx) {
+    String html;
 
-    String category = t.getJSONObject("cache").getString("category");
-    String otherName = t.getJSONObject("cache").getJSONObject("other_user").getString("name");
-    boolean senderMe = t.getJSONObject("amount").getString("amount").startsWith("-");
+    if (tx.isRequest()) {
+      html = String.format(c.getString(R.string.transaction_summary_request_them), tx.getFrom());
+    } else {
+      html = String.format(c.getString(R.string.transaction_summary_send_me), tx.getTo());
+    }
 
-    if(otherName.contains("external account")) {
+    return Html.fromHtml(html);
+  }
+
+  public static CharSequence generateAccountChangeSummary(Context c, AccountChange change) {
+    AccountChange.Cache cache = change.getCache();
+
+    AccountChange.Cache.Category category = cache.getCategory();
+    String otherName = cache.getOtherUser().getName();
+    boolean senderMe = change.getAmount().isNegative();
+
+    if (otherName.contains("external account")) {
         otherName = c.getString(R.string.transaction_user_external);
     } else {
         otherName.replace(" ", "\u00A0");
     }
 
     String html = null;
-    if("request".equals(category)) {
+
+    switch (category) {
+      case INVOICE:
+        if(senderMe) {
+          html = String.format(c.getString(R.string.transaction_summary_invoice_them), otherName);
+        } else {
+          html = String.format(c.getString(R.string.transaction_summary_invoice_me), otherName);
+        }
+        break;
+      case REQUEST:
+        if(senderMe) {
+          html = String.format(c.getString(R.string.transaction_summary_request_me), otherName);
+        } else {
+          html = String.format(c.getString(R.string.transaction_summary_request_them), otherName);
+        }
+        break;
+      case TRANSFER:
+        if(senderMe) {
+          html = c.getString(R.string.transaction_summary_sell);
+        } else {
+          html = c.getString(R.string.transaction_summary_buy);
+        }
+        break;
+      default:
+        if(senderMe) {
+          html = String.format(c.getString(R.string.transaction_summary_send_me), otherName);
+        } else {
+          html = String.format(c.getString(R.string.transaction_summary_send_them), otherName);
+        }
+        break;
+    }
+
+    return Html.fromHtml(html);
+  }
+
+  public static CharSequence generateTransactionSummary(Context c, Transaction tx) {
+    boolean senderMe = tx.getAmount().isNegative();
+
+    User otherUser = senderMe ? tx.getRecipient() : tx.getSender();
+    String otherName;
+
+
+    if (otherUser == null) {
+      otherName = c.getString(R.string.transaction_user_external);
+    } else {
+      otherName = otherUser.getName().replace(" ", "\u00A0");
+    }
+
+    String html = null;
+
+    if (tx.isRequest()) {
       if(senderMe) {
         html = String.format(c.getString(R.string.transaction_summary_request_me), otherName);
       } else {
         html = String.format(c.getString(R.string.transaction_summary_request_them), otherName);
-      }
-    } else if("invoice".equals(category)) {
-      if(senderMe) {
-        html = String.format(c.getString(R.string.transaction_summary_invoice_them), otherName);
-      } else {
-        html = String.format(c.getString(R.string.transaction_summary_invoice_me), otherName);
-      }
-    } else if("transfer".equals(category)) {
-      if(senderMe) {
-        html = c.getString(R.string.transaction_summary_sell);
-      } else {
-        html = c.getString(R.string.transaction_summary_buy);
       }
     } else {
       if(senderMe) {
@@ -302,30 +381,7 @@ public class Utils {
         html = String.format(c.getString(R.string.transaction_summary_send_them), otherName);
       }
     }
-
     return Html.fromHtml(html);
-  }
-
-  public static String getErrorStringFromJson(JSONObject response, String delimiter) throws JSONException {
-
-
-    JSONArray errors = response.getJSONArray("errors");
-    String errorMessage = "";
-
-    for(int i = 0; i < errors.length(); i++) {
-      errorMessage += (errorMessage.equals("") ? "" : delimiter) + errors.getString(i);
-    }
-    return errorMessage;
-  }
-
-  @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-  public static <T> void runAsyncTaskConcurrently(AsyncTask<T, ?, ?> task, T... params) {
-
-    if (PlatformUtils.hasHoneycomb()) {
-      task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, params);
-    } else {
-      task.execute(params);
-    }
   }
 
   public static String md5(String original) {
@@ -349,18 +405,9 @@ public class Utils {
     return sb.toString();
   }
 
-  public static int getActiveAccount(Context c) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return activeAccount;
-  }
-
   public static String getPrefsString(Context c, String key, String def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getString(String.format(key, activeAccount), def);
+    return prefs.getString(key, def);
   }
 
   public static boolean inKioskMode(Context c) {
@@ -368,55 +415,30 @@ public class Utils {
   }
 
   public static boolean getPrefsBool(Context c, String key, boolean def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getBoolean(String.format(key, activeAccount), def);
+    return prefs.getBoolean(key, def);
   }
 
   public static boolean putPrefsString(Context c, String key, String newValue) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.edit().putString(String.format(key, activeAccount), newValue).commit();
+    return prefs.edit().putString(key, newValue).commit();
   }
 
   public static int getPrefsInt(Context c, String key, int def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getInt(String.format(key, activeAccount), def);
-  }
-
-  public static boolean putPrefsInt(Context c, String key, int newValue) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.edit().putInt(String.format(key, activeAccount), newValue).commit();
-  }
-
-  public static boolean incrementPrefsInt(Context c, String key) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    int current = prefs.getInt(String.format(key, activeAccount), 0);
-    return prefs.edit().putInt(String.format(key, activeAccount), current + 1).commit();
+    return prefs.getInt(key, def);
   }
 
   public static boolean togglePrefsBool(Context c, String key, boolean def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    boolean current = prefs.getBoolean(String.format(key, activeAccount), def);
-    prefs.edit().putBoolean(String.format(key, activeAccount), !current).commit();
+    boolean current = prefs.getBoolean(key, def);
+    prefs.edit().putBoolean(key, !current).commit();
     return !current;
   }
 
   public static boolean putPrefsBool(Context c, String key, boolean newValue) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.edit().putBoolean(String.format(key, activeAccount), newValue).commit();
+    return prefs.edit().putBoolean(key, newValue).commit();
   }
 
   @TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -443,80 +465,5 @@ public class Utils {
     boolean isConnected = activeNetwork != null &&
             activeNetwork.isConnectedOrConnecting();
     return isConnected;
-  }
-
-  public static JSONObject createAccountChangeForTransaction(Context c, JSONObject transaction, String category) throws JSONException {
-    JSONObject accountChange = new JSONObject();
-    accountChange.put("transaction_id", transaction.optString("id"));
-    accountChange.put("created_at", transaction.getString("created_at"));
-    accountChange.put("confirmed", !transaction.getString("status").equals("pending"));
-    accountChange.put("amount", transaction.getJSONObject("amount"));
-    JSONObject cache = new JSONObject();
-    cache.put("category", category);
-    boolean thisUserSender = Utils.getPrefsString(c, Constants.KEY_ACCOUNT_ID, "").equals(transaction.getJSONObject("sender").getString("id"));
-    JSONObject otherUser = transaction.optJSONObject(thisUserSender ? "recipient" : "sender");
-    if (otherUser == null) {
-      otherUser = new JSONObject();
-      otherUser.put("id", null);
-      otherUser.put("name", "an external account");
-    }
-    cache.put("other_user", otherUser);
-    accountChange.put("cache", cache);
-    accountChange.put("delayed_transaction", transaction.optJSONObject("delayed_transaction"));
-    return accountChange;
-  }
-
-
-  public static void insertTransaction(Context c, JSONObject transaction, JSONObject accountChange, String status) {
-    insertTransaction(c, transaction, accountChange, status, Utils.getActiveAccount(c));
-  }
-
-  public static void insertTransaction(Context c, JSONObject transaction, JSONObject accountChange, String status, int account) {
-    DatabaseObject db = DatabaseObject.getInstance();
-    synchronized(db.databaseLock) {
-      db.beginTransaction(c);
-      try {
-        ContentValues values = new ContentValues();
-
-        String createdAtStr = transaction.optString("created_at", null);
-        long createdAt;
-        try {
-          if(createdAtStr != null) {
-            createdAt = ISO8601.toCalendar(createdAtStr).getTimeInMillis();
-          } else {
-            createdAt = -1;
-          }
-        } catch (ParseException e) {
-          // Error parsing createdAt
-          e.printStackTrace();
-          createdAt = -1;
-        }
-
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_TRANSACTION_JSON, transaction.toString());
-        values.put(TransactionsDatabase.TransactionEntry._ID, transaction.getString("id"));
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_JSON, accountChange.toString());
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_TIME, createdAt);
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_ACCOUNT, account);
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_ORDER, -System.currentTimeMillis());
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_STATUS, status);
-
-        long newId = db.insert(c, TransactionsDatabase.TransactionEntry.TABLE_NAME, null, values);
-        db.setTransactionSuccessful(c);
-      } catch (JSONException e) {
-        throw new RuntimeException("Malformed JSON from Coinbase", e);
-      } finally {
-        db.endTransaction(c);
-      }
-    }
-  }
-
-  public static String convertStreamToString(java.io.InputStream is) {
-    java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-    return s.hasNext() ? s.next() : "";
-  }
-
-  private static final Bus BUS = new Bus();
-  public static Bus bus() {
-    return BUS;
   }
 }

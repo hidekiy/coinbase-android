@@ -38,7 +38,7 @@
     <string name="menu_barcode">Escannear código de barras</string>
     <string name="buysell_type_buy">Comprar</string>
     <string name="buysell_type_sell">vender</string>
-    <string name="buysell_type_price">$%1$s cada uno</string>
+    <string name="buysell_type_price">%1$s cada uno</string>
     <string name="buysell_type_price_error">(no se pudo cargar precio)</string>
     <string name="buysell_type_buy_text">Comprar</string>
     <string name="buysell_type_sell_text">Vender</string>
@@ -46,10 +46,10 @@
     <string name="buysell_submit_buy">Comprar Bitcoins</string>
     <string name="buysell_submit_sell">Vender Bitcoins</string>
     <string name="buysell_total_error">No se pudo obtener el precio</string>
-    <string name="buysell_confirm_message_buy">¿Está seguro que desea comprar %1$s BTC por $%2$s %3$s? Su cuenta de banco primaria será usada para la transacción.</string>
-    <string name="buysell_confirm_message_sell">¿Está seguro que desea vender %1$s BTC por $%2$s %3$s? Su cuenta de banco primaria será usada para la transacción.</string>
+    <string name="buysell_confirm_message_buy">¿Está seguro que desea comprar %1$s por %2$s? Su cuenta de banco primaria será usada para la transacción.</string>
+    <string name="buysell_confirm_message_sell">¿Está seguro que desea vender %1$s por %2$s? Su cuenta de banco primaria será usada para la transacción.</string>
     <string name="buysell_error_exception">El pedido no pudo ser completado.</string>
-    <string name="buysell_error_api">El pedido no pudo ser completado.\n\n%1$s</string>
+    <string name="buysell_error_api">El pedido no pudo ser completado.</string>
     <string name="buysell_progress">Enviando&#8230;</string>
     <string name="buysell_success_buy">%1$s BTC comprados.</string>
     <string name="buysell_success_sell">%1$s BTC vendidos.</string>
@@ -89,9 +89,9 @@
     <string name="menu_about">Acerca de</string>
     <string name="menu_help">Ayuda</string>
     <string name="transfer_recipient">E-mail o dirección de bitcoin del beneficiario</string>
-    <string name="transfer_confirm_message_send">¿Está seguro que le desea enviar %1$s %3$s a %2$s?</string>
-    <string name="transfer_confirm_message_request">¿Está seguro que le desea solicitar %1$s %3$s a %2$s?</string>
-    <string name="transfer_confirm_message_send_fee">Está transacción requiere una comisión de %4$s BTC para que sea aceptada por la red de bitcoin. ¿Está seguro que le desea enviar %1$s %3$s a %2$s?</string>
+    <string name="transfer_confirm_message_send">¿Está seguro que le desea enviar %1$s a %2$s?</string>
+    <string name="transfer_confirm_message_request">¿Está seguro que le desea solicitar %1$s a %2$s?</string>
+    <string name="transfer_confirm_message_send_fee">Está transacción requiere una comisión de %3$s BTC para que sea aceptada por la red de bitcoin. ¿Está seguro que le desea enviar %1$s a %2$s?</string>
     <string name="transfer_error_exception">El pedido no pudo ser completado.</string>
     <string name="transfer_error_api">El pedido no pudo ser completado.\n\n%1$s</string>
     <string name="transfer_progress">Enviando&#8230;</string>
@@ -106,7 +106,7 @@
     <string name="menu_refresh">Actualizar</string>
     <string name="transfer_nfc_ready">NFC está habilitado.\n\nJunta las partes traseras de ambos dispositivos y toca la pantalla.</string>
     <string name="transfer_nfc_failure">No se pudo iniciar la transferencia NFC.</string>
-    <string name="transfer_email_prompt_text">Solicitando %1$s %2$s a:</string>
+    <string name="transfer_email_prompt_text">Solicitando %1$s a:</string>
     <string name="transfer_email_prompt_hint">Ingresa dirección de e-mail</string>
     <string name="transactiondetails_request_resend">Re-enviar Solicitud</string>
     <string name="transactiondetails_request_cancel">Cancelar Pedido</string>
@@ -119,7 +119,7 @@
     <string name="transactiondetails_title">Detalles de la transacción</string>
     <string name="transactiondetails_progress">Enviando&#8230;</string>
     <string name="transactiondetails_action_error">No se pudo actuar sobre la transacción (%1$s).</string>
-    <string name="wallet_balance_home">≈ %1$s %2$s</string>
+    <string name="wallet_balance_home">≈ %1$s</string>
     <string name="account_name">Nombre</string>
     <string name="account_email">E-mail</string>
     <string name="account_time_zone">Zona horaria</string>
@@ -165,8 +165,9 @@
     <string name="pos_result_failure_creation">No se pudo crear el pedido.</string>
     <string name="pos_result_failure_creation_exception">No se pudo crar el pedido (%1$s).</string>
     <string name="waiting_for_payment">Esperando pago...</string>
-    <string name="payment_received">Has recibido %1$s BTC (%2$s %3$s).</string>
-    <string name="payment_received_short">Has recibido %1$s BTC (%2$s %3$s), pero has solicitado %4$s BTC.</string>
+    <string name="payment_received">Has recibido %1$s.</string>
+    <string name="payment_received_native">Has recibido %1$s (%2$s).</string>
+    <string name="payment_received_short">Has recibido %1$s, pero has solicitado %2$s.</string>
     <string name="pos_description">El Punto de Venta es una versión simplificada de la pestaña Enviar / Recibir, optimizada para comerciantes.</string>
     <string name="account_android_pin">Contraseña de la aplicación Android</string>
     <string name="account_android_pin_all">Requiere contraseña para abrir la aplicación</string>

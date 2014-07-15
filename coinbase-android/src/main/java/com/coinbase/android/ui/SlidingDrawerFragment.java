@@ -7,8 +7,6 @@ import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,11 +21,15 @@ import com.coinbase.android.BuildConfig;
 import com.coinbase.android.BuildType;
 import com.coinbase.android.Constants;
 import com.coinbase.android.FontManager;
+import com.coinbase.android.Log;
 import com.coinbase.android.MainActivity;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;
 import com.coinbase.android.event.SectionSelectedEvent;
 import com.coinbase.android.event.UserDataUpdatedEvent;
+import com.coinbase.api.LoginManager;
+import com.google.inject.Inject;
+import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
 import java.net.URL;
@@ -35,10 +37,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import roboguice.fragment.RoboFragment;
+
 /**
  * Sliding drawer that appears at the side of the screen.
  */
-public class SlidingDrawerFragment extends Fragment {
+public class SlidingDrawerFragment extends RoboFragment {
 
   private class SectionsListItem {
     public String[] text;
@@ -157,6 +161,8 @@ public class SlidingDrawerFragment extends Fragment {
 
   View mProfileView;
   SectionsListAdapter mAdapter;
+  @Inject protected Bus mBus;
+  @Inject protected LoginManager mLoginManager;
 
   private void createProfileView() {
     mProfileView = View.inflate(getActivity(), R.layout.activity_main_drawer_profile, null);
@@ -168,14 +174,12 @@ public class SlidingDrawerFragment extends Fragment {
   }
 
   public void refreshProfileView() {
-
     TextView name = (TextView) mProfileView.findViewById(R.id.drawer_profile_name);
     TextView email = (TextView) mProfileView.findViewById(R.id.drawer_profile_account);
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String emailText = prefs.getString(String.format(Constants.KEY_ACCOUNT_NAME, activeAccount), "");
-    name.setText(prefs.getString(String.format(Constants.KEY_ACCOUNT_FULL_NAME, activeAccount), null));
+    String emailText = prefs.getString(Constants.KEY_ACCOUNT_EMAIL, "");
+    name.setText(prefs.getString(Constants.KEY_ACCOUNT_FULL_NAME, null));
 
     boolean emailChanged = !emailText.equals(email.getText().toString());
     if (emailChanged) {
@@ -189,7 +193,7 @@ public class SlidingDrawerFragment extends Fragment {
 
     ListView view = (ListView) inflater.inflate(R.layout.fragment_sliding_drawer, null);
     mAdapter = new SectionsListAdapter();
-    view.setAdapter(mAdapter);
+
     view.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
       @Override
@@ -212,6 +216,7 @@ public class SlidingDrawerFragment extends Fragment {
     // Profile
     createProfileView();
     view.addHeaderView(mProfileView);
+    view.setAdapter(mAdapter);
 
     return view;
   }
@@ -227,14 +232,14 @@ public class SlidingDrawerFragment extends Fragment {
   }
 
   @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    Utils.bus().register(this);
+  public void onResume() {
+    mBus.register(this);
+    super.onResume();
   }
 
   @Override
-  public void onDestroy() {
-    super.onDestroy();
-    Utils.bus().unregister(this);
+  public void onPause() {
+    mBus.unregister(this);
+    super.onPause();
   }
 }

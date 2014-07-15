@@ -52,10 +52,10 @@
     <string name="buysell_submit_buy">Koupit bitcoiny</string>
     <string name="buysell_submit_sell">Prodat bitcoiny</string>
     <string name="buysell_total_error">Nelze získat cenu</string>
-    <string name="buysell_confirm_message_buy">Skutečně chcete koupit %1$s BTC za $%2$s %3$s? Bude použit primární účet.</string>
-    <string name="buysell_confirm_message_sell">Skutečně chcete prodat %1$s BTC za $%2$s %3$s? Bude použit primární účet.</string>
+    <string name="buysell_confirm_message_buy">Skutečně chcete koupit %1$s za %2$s? Bude použit primární účet.</string>
+    <string name="buysell_confirm_message_sell">Skutečně chcete prodat %1$s za %2$s? Bude použit primární účet.</string>
     <string name="buysell_error_exception">Požadavek se nepodařilo dokončit.</string>
-    <string name="buysell_error_api">Požadavek nelze dokončit.\n\n%1$s</string>
+    <string name="buysell_error_api">Požadavek nelze dokončit.</string>
     <string name="buysell_progress">Zasílání&#8230;</string>
     <string name="buysell_success_buy">Zakoupeno %1$s BTC.</string>
     <string name="buysell_success_sell">Prodáno %1$s BTC.</string>
@@ -93,9 +93,9 @@
     <string name="menu_about">O aplikaci</string>
     <string name="menu_help">Nápověda</string>
     <string name="transfer_recipient">Email nebo bitcoinová adresa</string>
-    <string name="transfer_confirm_message_send">Opravdu chcete poslat %2$s %1$s %3$s?</string>
-    <string name="transfer_confirm_message_request">Opravdu chcete vyžádat od %2$s %1$s %3$s?</string>
-    <string name="transfer_confirm_message_send_fee">Tato transakce vyžaduje poplatek of %4$s BTC aby byla akceptovaná sítí. Opravdu chcete poslat %2$s %1$s %3$s?</string>
+    <string name="transfer_confirm_message_send">Opravdu chcete poslat %2$s %1$s?</string>
+    <string name="transfer_confirm_message_request">Opravdu chcete vyžádat od %2$s %1$s?</string>
+    <string name="transfer_confirm_message_send_fee">Tato transakce vyžaduje poplatek of %3$s BTC aby byla akceptovaná sítí. Opravdu chcete poslat %2$s %1$s?</string>
     <string name="transfer_error_exception">Požadavek nemohl být dokončen.</string>
     <string name="transfer_error_api">Požadavek nemohl být dokončen.\n\n%1$s</string>
     <string name="transfer_progress">Zasílám&#8230;</string>
@@ -109,7 +109,7 @@
     <string name="menu_refresh">Obnovit</string>
     <string name="transfer_nfc_ready">NFC je povoleno.\n\nPodržte zadní stranu vašeho zařízení proti zadní straně druhého zařízení a dotkněte se středu obrazovky.</string>
     <string name="transfer_nfc_failure">Nezdařilo se započít NFC přenos.</string>
-    <string name="transfer_email_prompt_text">Požaduji %1$s %2$s od:</string>
+    <string name="transfer_email_prompt_text">Požaduji %1$s od:</string>
     <string name="transfer_email_prompt_hint">Zadejte emailovou adresu</string>
     <string name="transactiondetails_request_resend">Znovu odeslat požadavek</string>
     <string name="transactiondetails_request_cancel">Zrušit požadavek</string>
@@ -123,7 +123,7 @@
     <string name="transactiondetails_title">Detail transakce</string>
     <string name="transactiondetails_progress">Zasílám&#8230;</string>
     <string name="transactiondetails_action_error">Nezdařilo se vykonání transakce (%1$s).</string>
-    <string name="wallet_balance_home">≈ %1$s %2$s</string>
+    <string name="wallet_balance_home">≈ %1$s</string>
     <string name="account_name">Jméno</string>
     <string name="account_email">Email</string>
     <string name="account_time_zone">Časová zóna</string>
@@ -136,7 +136,7 @@
     <string name="account_save_error">Nelze uložit nastavení účtu.</string>
     <string name="account_save_progress">Ukládám...</string>
     <string name="buysell_help">Pro spojení bankovního účtu s účtem na Coinbase, navštivte https://coinbase.com ve vašem prohlížeči.</string>
-    <string name="transfer_amt_native">≈ %1$s %2$s</string>
+    <string name="transfer_amt_native">≈ %1$s</string>
     <string name="transactions_refresh_error">Nelze synchronizovat transakce.</string>
     <string name="account_limits">Limity nákupů</string>
     <string name="account_limits_text">Nákup %1$s %2$s za den, prodej %3$s %4$s za den</string>
@@ -170,8 +170,9 @@
     <string name="pos_traditional">≈ %1$s %2$s</string>
     <string name="pos_notes">Poznámky</string>
     <string name="waiting_for_payment">Čekání na platbu...</string>
-    <string name="payment_received">Obdrženo %1$s BTC (%2$s %3$s).</string>
-    <string name="payment_received_short">Obdrženo %1$s BTC (%2$s %3$s), ale bylo požadováno %4$s BTC.</string>
+    <string name="payment_received">Obdrženo %1$s.</string>
+    <string name="payment_received_native">Obdrženo %1$s (%2$s).</string>
+    <string name="payment_received_short">Obdrženo %1$s, ale bylo požadováno %2$s.</string>
     <string name="pos_description">The Point of Sale tab je zjednodušený pohled na tab Poslat / Vyžádat, optimalizováno pro obchodníky.</string>
     <string name="account_android_pin">Pin aplikace</string>
     <string name="account_android_pin_all">Pro otevření aplikace je vyžádován pin</string>

@@ -17,7 +17,6 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
-import com.coinbase.android.AccountsFragment;
 import com.coinbase.android.BuildConfig;
 import com.coinbase.android.BuildType;
 import com.coinbase.android.CoinbaseActivity;
@@ -28,9 +27,10 @@ import com.coinbase.android.LoginActivity;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;
 import com.coinbase.api.LoginManager;
+import com.google.inject.Inject;
 
 @RequiresAuthentication
-public class PINPromptActivity extends CoinbaseActivity implements AccountsFragment.ParentActivity {
+public class PINPromptActivity extends CoinbaseActivity {
 
   public static final String ACTION_PROMPT = "com.coinbase.android.pin.ACTION_PROMPT";
   public static final String ACTION_SET = "com.coinbase.android.pin.ACTION_SET";
@@ -39,13 +39,16 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
   private EditText mPinNumberField = null;
   private GridView mKeyboard = null;
 
+  @Inject
+  protected PINManager mPinManager;
+
   @Override
-  protected void onCreate(Bundle arg0) {
+  public void onCreate(Bundle arg0) {
     super.onCreate(arg0);
 
     mIsSetMode = ACTION_SET.equals(getIntent().getAction());
 
-    if(mIsSetMode && !PINManager.getInstance().shouldGrantAccess(this)) {
+    if(mIsSetMode && !mPinManager.shouldGrantAccess(this)) {
       finish();
       return;
     }
@@ -57,20 +60,7 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
 
     setContentView(R.layout.activity_pinprompt);
 
-    boolean hideSwitchAccounts = mIsSetMode || BuildConfig.type == BuildType.MERCHANT;
-    findViewById(R.id.pin_switch_accounts).setOnClickListener(new View.OnClickListener() {
-
-      @Override
-      public void onClick(View v) {
-
-        new AccountsFragment().show(getSupportFragmentManager(), "accounts");
-      }
-    });
-    ((TextView) findViewById(R.id.pin_switch_accounts)).setTypeface(
-            FontManager.getFont(this, "RobotoCondensed-Regular"));
-    findViewById(R.id.pin_switch_accounts).setVisibility(hideSwitchAccounts ? View.GONE : View.VISIBLE);
-
-    ((TextView) findViewById(R.id.pin_account)).setText(LoginManager.getInstance().getSelectedAccountName(this));
+    ((TextView) findViewById(R.id.pin_account)).setText(mLoginManager.getSelectedAccountName());
 
     mPinNumberField = ((EditText) findViewById(R.id.pin_number));
     mPinNumberField.setOnEditorActionListener(new OnEditorActionListener() {
@@ -177,8 +167,7 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
     } else {
 
       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(PINPromptActivity.this);
-      int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-      String pin = prefs.getString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), null);
+      String pin = prefs.getString(Constants.KEY_ACCOUNT_PIN, null);
 
       if(mPinNumberField.getText().toString().equals(pin)) {
         // Correct PIN has been entered.
@@ -193,10 +182,10 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
   private void onPinEntered(String pin) {
 
     if(mIsSetMode) {
-      PINManager.getInstance().setPin(this, pin);
-      PINManager.getInstance().resetPinClock(this);
+      mPinManager.setPin(this, pin);
+      mPinManager.resetPinClock(this);
     } else {
-      PINManager.getInstance().resetPinClock(this);
+      mPinManager.resetPinClock(this);
     }
 
     setResult(RESULT_OK);
@@ -217,25 +206,7 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
       super.onBackPressed();
 
       if(!mIsSetMode) {
-          PINManager.getInstance().setQuitPINLock(true);
+          mPinManager.setQuitPINLock(true);
       }
-  }
-
-  public void onAccountChosen(int account) {
-
-    // Change active account
-    LoginManager.getInstance().switchActiveAccount(this, account);
-
-    finish();
-    startActivity(new Intent(this, getClass()));
-    overridePendingTransition(0, 0);
-  }
-
-  public void onAddAccount() {
-
-    Intent intent = new Intent(this, LoginActivity.class);
-    intent.putExtra(LoginActivity.EXTRA_SHOW_INTRO, false);
-    startActivity(intent);
-    finish();
   }
 }

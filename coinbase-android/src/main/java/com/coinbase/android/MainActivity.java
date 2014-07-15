@@ -15,7 +15,6 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.DrawerLayout;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -27,22 +26,32 @@ import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 import com.coinbase.android.CoinbaseActivity.RequiresAuthentication;
 import com.coinbase.android.CoinbaseActivity.RequiresPIN;
+import com.coinbase.android.event.BuySellMadeEvent;
+import com.coinbase.android.event.NewDelayedTransactionEvent;
+import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.android.event.SectionSelectedEvent;
+import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.merchant.MerchantKioskHomeActivity;
 import com.coinbase.android.merchant.MerchantKioskModeService;
 import com.coinbase.android.merchant.MerchantToolsFragment;
 import com.coinbase.android.merchant.PointOfSaleFragment;
 import com.coinbase.android.pin.PINSettingDialogFragment;
+import com.coinbase.android.settings.AccountSettingsFragment;
+import com.coinbase.android.transfers.DelayedTxSenderService;
+import com.coinbase.android.transfers.TransferFragment;
 import com.coinbase.android.ui.Mintent;
 import com.coinbase.android.ui.SignOutFragment;
 import com.coinbase.android.ui.SlidingDrawerFragment;
 import com.coinbase.android.util.Section;
-import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.Account;
 import com.coinbase.zxing.client.android.Intents;
+import com.google.inject.Inject;
+import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
 @RequiresAuthentication
 @RequiresPIN
-public class MainActivity extends CoinbaseActivity implements AccountsFragment.ParentActivity {
+public class MainActivity extends CoinbaseActivity implements TransactionsFragment.Listener, AccountsFragment.ParentActivity {
 
   public static final String ACTION_SCAN = "com.siriusapplications.coinbase.MainActivity.ACTION_SCAN";
   public static final String ACTION_TRANSFER = "com.siriusapplications.coinbase.MainActivity.ACTION_TRANSFER";
@@ -92,16 +101,21 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   boolean mPendingPinReturn = false;
   Utils.AndroidBug5497Workaround mBugWorkaround = new Utils.AndroidBug5497Workaround();
 
+  @Inject protected Bus mBus;
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
+    if (isFinishing()) {
+      return;
+    }
+
     setContentView(R.layout.activity_main);
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-    int currentAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String firstLaunchKey = String.format(Constants.KEY_ACCOUNT_FIRST_LAUNCH, currentAccount);
-    boolean firstLaunch = prefs.getBoolean(firstLaunchKey, true);
-    prefs.edit().putBoolean(firstLaunchKey, false).commit();
+    boolean firstLaunch = prefs.getBoolean(Constants.KEY_ACCOUNT_FIRST_LAUNCH, true);
+    prefs.edit().putBoolean(Constants.KEY_ACCOUNT_FIRST_LAUNCH, false).commit();
 
     // Set up the ViewFlipper
     mViewFlipper = (ViewFlipper) findViewById(R.id.flipper);
@@ -280,7 +294,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
       mTransactionsFragment.hideDetails(false);
     }
     updateBackButton();
-    Utils.bus().post(new SectionSelectedEvent(Section.fromIndex(index)));
+    mBus.post(new SectionSelectedEvent(Section.fromIndex(index)));
   }
 
   public Section getSelectedSection() {
@@ -536,21 +550,12 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   public void onResume() {
     super.onResume();
 
-    // Refresh
-    if (mTransactionsFragment != null) {
-      mTransactionsFragment.loadTransactionsList();
-    }
-    ((CoinbaseApplication) getApplication()).addMainActivity(this);
-    if((System.currentTimeMillis() - mLastRefreshTime) > RESUME_REFRESH_INTERVAL) {
-      refresh();
-    }
+    // Flush any leftover delayed transactions
+    startService(new Intent(this, DelayedTxSenderService.class));
 
-    // Legacy support:
     // If the old Point of Sale is enabled, show a dialog directing them to the Play Store
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String key = String.format(Constants.KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS, activeAccount);
-    if (prefs.getBoolean(key, false)) {
+    if (prefs.getBoolean(Constants.KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS, false)) {
       new MerchantToolsMovedDialogFragment().show(getSupportFragmentManager(), "poslegacy");
     }
   }
@@ -574,13 +579,12 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     // away from the app
     InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
     inputMethodManager.hideSoftInputFromWindow(
-      findViewById(android.R.id.content).getWindowToken(), 0);
+            findViewById(android.R.id.content).getWindowToken(), 0);
   }
 
   public void openTransferMenu(boolean isRequest) {
-
     switchTo(FRAGMENT_INDEX_TRANSFER);
-    mTransferFragment.switchType(isRequest ? TransferFragment.TransferType.REQUEST.ordinal() : TransferFragment.TransferType.SEND.ordinal());
+    mTransferFragment.switchType(isRequest ? TransferFragment.TransferType.REQUEST : TransferFragment.TransferType.SEND);
   }
 
   @Override
@@ -604,7 +608,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
           hideSlidingMenu(false);
         }
 
-        refresh();
+        mBus.post(new RefreshRequestedEvent());
         return true;
       case R.id.menu_help:
         Intent helpIntent = new Intent(Intent.ACTION_VIEW);
@@ -673,32 +677,10 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     return super.onOptionsItemSelected(item);
   }
 
-  public void onAccountChosen(int account) {
-    changeAccount(account);
-  }
-
-  public void changeAccount(int account) {
-
-    if(account == -1) {
-
-      // Delete current account
-      LoginManager.getInstance().deleteCurrentAccount(this);
-    } else {
-
-      // Change active account
-      LoginManager.getInstance().switchActiveAccount(this, account);
-    }
-
+  public void onAccountChosen(Account account) {
+    mLoginManager.switchActiveAccount(account);
     finish();
     startActivity(new Intent(this, MainActivity.class));
-  }
-
-  public void onAddAccount() {
-
-    Intent intent = new Intent(this, LoginActivity.class);
-    intent.putExtra(LoginActivity.EXTRA_SHOW_INTRO, false);
-    startActivity(intent);
-    finish();
   }
 
   public void startBarcodeScan() {
@@ -730,8 +712,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
        * Transaction details
        */
       if(resultCode == RESULT_OK) {
-        // Refresh needed
-        refresh();
+        mBus.post(new RefreshRequestedEvent());
       }
     } else if (requestCode == REQUEST_CODE_PIN && resultCode == RESULT_OK) {
       // PIN was successfully entered
@@ -786,17 +767,55 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     }
   }
 
-  public void refresh() {
+  @Override
+  public void onSendMoneyClicked() {
+    openTransferMenu(false);
+  }
 
-    mLastRefreshTime = System.currentTimeMillis();
+  @Override
+  public void onStartTransactionsSync() {
+    setRefreshButtonAnimated(true);
+  }
 
-    if (BuildConfig.type == BuildType.CONSUMER) {
-      mTransactionsFragment.refresh();
-      mBuySellFragment.refresh();
-      mTransferFragment.refresh();
-      mSettingsFragment.refresh();
-    } else {
-      mPointOfSaleFragment.refresh();
-    }
+  @Override
+  public void onFinishTransactionsSync() {
+    setRefreshButtonAnimated(false);
+  }
+
+  @Override
+  public void onEnteringDetailsMode() {
+    setInTransactionDetailsMode(true);
+  }
+
+  @Override
+  public void onExitingDetailsMode() {
+    setInTransactionDetailsMode(false);
+  }
+
+  @Override
+  public void onStart() {
+    super.onStart();
+    mBus.register(this);
+  }
+
+  @Override
+  public void onStop() {
+    mBus.unregister(this);
+    super.onStop();
+  }
+
+  @Subscribe
+  public void onTransferMade(TransferMadeEvent event) {
+    switchTo(FRAGMENT_INDEX_TRANSACTIONS);
+  }
+
+  @Subscribe
+  public void onNewDelayedTransaction(NewDelayedTransactionEvent event) {
+    switchTo(FRAGMENT_INDEX_TRANSACTIONS);
+  }
+
+  @Subscribe
+  public void onBuySellMade(BuySellMadeEvent event) {
+    switchTo(FRAGMENT_INDEX_TRANSACTIONS);
   }
 }

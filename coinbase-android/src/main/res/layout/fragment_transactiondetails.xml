@@ -103,16 +103,6 @@
                         android:textSize="25sp"
                         android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/transactiondetails_amount_btc"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignBaseline="@+id/transactiondetails_amount"
-                        android:layout_marginLeft="5dp"
-                        android:layout_toRightOf="@+id/transactiondetails_amount"
-                        android:text="@string/btc"
-                        android:textColor="#50bf82"
-                        android:textSize="25sp" />
                 </RelativeLayout>
 
                 <!-- Divider -->
