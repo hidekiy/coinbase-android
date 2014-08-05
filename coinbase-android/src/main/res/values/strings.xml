@@ -142,7 +142,7 @@
     <string name="transactiondetails_title">Transaction details</string>
     <string name="transactiondetails_progress">Sending&#8230;</string>
     <string name="transactiondetails_action_error">Could not take action on transaction (%1$s).</string>
-    <string name="wallet_balance_home">≈ %1$s %2$s</string>
+    <string name="wallet_balance_home">≈ %1$s</string>
     <string name="account_name">Name</string>
     <string name="account_email">Email</string>
     <string name="account_time_zone">Time zone</string>

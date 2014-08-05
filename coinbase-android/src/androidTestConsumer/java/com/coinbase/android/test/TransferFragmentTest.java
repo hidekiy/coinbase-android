@@ -44,7 +44,7 @@ public class TransferFragmentTest extends MockApiTest {
     getSolo().enterText(1, "1180.46");
 
     getSolo().waitForText("≈");
-    assertTrue(getSolo().searchText("BTC2.00"));
+    assertTrue(getSolo().searchText("฿2.0000"));
   }
 
   public void testNativeExchangeRate() throws Exception {
@@ -79,7 +79,7 @@ public class TransferFragmentTest extends MockApiTest {
   public void testChangeCurrency() throws Exception {
     getSolo().enterText(1, "6");
 
-    assertTrue(getSolo().searchText("BTC0.01"));
+    assertTrue(getSolo().searchText("฿0.0102"));
 
     getSolo().pressSpinnerItem(1, 1); // Choose BTC
 
@@ -142,7 +142,7 @@ public class TransferFragmentTest extends MockApiTest {
     mockReceivedTransaction.setRecipient(mockUser());
     mockResponse.getTransactions().add(mockReceivedTransaction);
 
-    assertTrue(getSolo().searchText("Received BTC1.00, but you requested"));
+    assertTrue(getSolo().searchText("Received ฿1.0000, but you requested"));
 
     getSolo().clickOnText("OK");
   }
@@ -181,13 +181,12 @@ public class TransferFragmentTest extends MockApiTest {
 
     getSolo().sleep(1000);
 
-    assertTrue(getSolo().searchText("Received BTC2.00."));
+    assertTrue(getSolo().searchText("Received ฿2.0000."));
 
     getSolo().clickOnText("OK");
   }
 
   // Note, cannot be run on emulator
-  /*
   public void testRequestNFCMispaid() throws Exception {
     List<Transaction> mockTransactions = new ArrayList<Transaction>();
     TransactionsResponse mockResponse = new TransactionsResponse();
@@ -215,11 +214,10 @@ public class TransferFragmentTest extends MockApiTest {
     mockReceivedTransaction.setRecipient(mockUser());
     mockResponse.getTransactions().add(mockReceivedTransaction);
 
-    assertTrue(getSolo().searchText("Received BTC1.00, but you requested"));
+    assertTrue(getSolo().searchText("Received ฿1.0000, but you requested"));
 
     getSolo().clickOnText("OK");
   }
-  */
 
   @Override
   public void tearDown() throws Exception {

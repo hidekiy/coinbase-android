@@ -25,9 +25,8 @@ import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.FrameLayout;
 
-import com.coinbase.android.db.DatabaseObject;
-import com.coinbase.android.db.TransactionsDatabase;
 import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.AccountChange;
 import com.coinbase.api.entity.Contact;
 import com.google.inject.Inject;
 import com.google.zxing.BarcodeFormat;
@@ -38,6 +37,7 @@ import com.google.zxing.common.BitMatrix;
 
 import org.joda.money.BigMoney;
 import org.joda.money.BigMoneyProvider;
+import org.joda.money.format.MoneyAmountStyle;
 import org.joda.money.format.MoneyFormatter;
 import org.joda.money.format.MoneyFormatterBuilder;
 import org.json.JSONArray;
@@ -56,6 +56,8 @@ import java.util.List;
 import java.util.Locale;
 
 import roboguice.RoboGuice;
+
+import static java.lang.Math.min;
 
 public class Utils {
 
@@ -208,34 +210,47 @@ public class Utils {
       mChildOfContent.getWindowVisibleDisplayFrame(r);
       return (r.bottom - r.top);
     }
-
   }
 
   public static final String formatMoney(BigMoneyProvider money) {
-    BigMoney originalMoney = money.toBigMoney();
-    BigDecimal displayAmount = originalMoney.getAmount();
-    displayAmount = displayAmount.stripTrailingZeros();
-    if (displayAmount.scale() < 2) {
-      displayAmount = displayAmount.setScale(2);
+    MoneyFormatter formatter;
+
+    if (money.toBigMoney().getCurrencyUnit().getCurrencyCode().equalsIgnoreCase("BTC")) {
+      // Need to specify bitcoin symbol
+      formatter = new MoneyFormatterBuilder()
+              .appendLiteral("\u0E3F")
+              .appendAmount(MoneyAmountStyle.LOCALIZED_NO_GROUPING)
+              .toFormatter();
+
+      // Strip trailing zeros past four decimal places
+      BigDecimal displayAmount = money.toBigMoney().getAmount().stripTrailingZeros();
+      if (displayAmount.scale() < 4) {
+        displayAmount = displayAmount.setScale(4);
+      }
+      money = BigMoney.of (
+              money.toBigMoney().getCurrencyUnit(),
+              displayAmount
+      );
+    } else {
+      // Build money formatter from default locale
+      formatter = new MoneyFormatterBuilder()
+              .appendCurrencySymbolLocalized()
+              .appendAmountLocalized()
+              .toFormatter();
     }
 
-    BigMoney zerosStripped = BigMoney.of(
-            originalMoney.getCurrencyUnit(),
-            displayAmount
-    );
-
-    // Build money formatter from default locale
-    MoneyFormatter formatter = new MoneyFormatterBuilder()
-                                    .appendCurrencySymbolLocalized()
-                                    .appendAmountLocalized()
-                                    .toFormatter();
-
-    String result = formatter.print(zerosStripped);
+    String result = formatter.print(money);
     return result;
   }
 
+  public static final String formatMoneyRounded(BigMoneyProvider money, int scale) {
+    BigMoney rounded = money.toBigMoney().withScale(scale, RoundingMode.HALF_EVEN);
+
+    return formatMoney(rounded);
+  }
+
   public static final String formatMoneyRounded(BigMoneyProvider money) {
-    return formatMoney(money.toBigMoney().withScale(2, RoundingMode.HALF_EVEN));
+    return formatMoneyRounded(money, min(4, money.toBigMoney().getCurrencyUnit().getDecimalPlaces()));
   }
 
   public static final String formatCurrencyAmount(String amount) {
@@ -298,43 +313,51 @@ public class Utils {
     return new ContactsAutoCompleteAdapter(context, android.R.layout.simple_spinner_dropdown_item);
   }
 
-  public static CharSequence generateTransactionSummary(Context c, JSONObject t) throws JSONException {
+  public static CharSequence generateAccountChangeSummary(Context c, AccountChange change) {
 
-    String category = t.getJSONObject("cache").getString("category");
-    String otherName = t.getJSONObject("cache").getJSONObject("other_user").getString("name");
-    boolean senderMe = t.getJSONObject("amount").getString("amount").startsWith("-");
+    AccountChange.Cache cache = change.getCache();
 
-    if(otherName.contains("external account")) {
+    AccountChange.Cache.Category category = cache.getCategory();
+    String otherName = cache.getOtherUser().getName();
+    boolean senderMe = change.getAmount().isNegative();
+
+    if (otherName.contains("external account")) {
         otherName = c.getString(R.string.transaction_user_external);
     } else {
         otherName.replace(" ", "\u00A0");
     }
 
     String html = null;
-    if("request".equals(category)) {
-      if(senderMe) {
-        html = String.format(c.getString(R.string.transaction_summary_request_me), otherName);
-      } else {
-        html = String.format(c.getString(R.string.transaction_summary_request_them), otherName);
-      }
-    } else if("invoice".equals(category)) {
-      if(senderMe) {
-        html = String.format(c.getString(R.string.transaction_summary_invoice_them), otherName);
-      } else {
-        html = String.format(c.getString(R.string.transaction_summary_invoice_me), otherName);
-      }
-    } else if("transfer".equals(category)) {
-      if(senderMe) {
-        html = c.getString(R.string.transaction_summary_sell);
-      } else {
-        html = c.getString(R.string.transaction_summary_buy);
-      }
-    } else {
-      if(senderMe) {
-        html = String.format(c.getString(R.string.transaction_summary_send_me), otherName);
-      } else {
-        html = String.format(c.getString(R.string.transaction_summary_send_them), otherName);
-      }
+
+    switch (category) {
+      case INVOICE:
+        if(senderMe) {
+          html = String.format(c.getString(R.string.transaction_summary_invoice_them), otherName);
+        } else {
+          html = String.format(c.getString(R.string.transaction_summary_invoice_me), otherName);
+        }
+        break;
+      case REQUEST:
+        if(senderMe) {
+          html = String.format(c.getString(R.string.transaction_summary_request_me), otherName);
+        } else {
+          html = String.format(c.getString(R.string.transaction_summary_request_them), otherName);
+        }
+        break;
+      case TRANSFER:
+        if(senderMe) {
+          html = c.getString(R.string.transaction_summary_sell);
+        } else {
+          html = c.getString(R.string.transaction_summary_buy);
+        }
+        break;
+      default:
+        if(senderMe) {
+          html = String.format(c.getString(R.string.transaction_summary_send_me), otherName);
+        } else {
+          html = String.format(c.getString(R.string.transaction_summary_send_them), otherName);
+        }
+        break;
     }
 
     return Html.fromHtml(html);
@@ -498,50 +521,6 @@ public class Utils {
     accountChange.put("cache", cache);
     accountChange.put("delayed_transaction", transaction.optJSONObject("delayed_transaction"));
     return accountChange;
-  }
-
-
-  public static void insertTransaction(Context c, JSONObject transaction, JSONObject accountChange, String status) {
-    insertTransaction(c, transaction, accountChange, status, Utils.getActiveAccount(c));
-  }
-
-  public static void insertTransaction(Context c, JSONObject transaction, JSONObject accountChange, String status, int account) {
-    DatabaseObject db = DatabaseObject.getInstance();
-    synchronized(db.databaseLock) {
-      db.beginTransaction(c);
-      try {
-        ContentValues values = new ContentValues();
-
-        String createdAtStr = transaction.optString("created_at", null);
-        long createdAt;
-        try {
-          if(createdAtStr != null) {
-            createdAt = ISO8601.toCalendar(createdAtStr).getTimeInMillis();
-          } else {
-            createdAt = -1;
-          }
-        } catch (ParseException e) {
-          // Error parsing createdAt
-          e.printStackTrace();
-          createdAt = -1;
-        }
-
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_TRANSACTION_JSON, transaction.toString());
-        values.put(TransactionsDatabase.TransactionEntry._ID, transaction.getString("id"));
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_JSON, accountChange.toString());
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_TIME, createdAt);
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_ACCOUNT, account);
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_ORDER, -System.currentTimeMillis());
-        values.put(TransactionsDatabase.TransactionEntry.COLUMN_NAME_STATUS, status);
-
-        long newId = db.insert(c, TransactionsDatabase.TransactionEntry.TABLE_NAME, null, values);
-        db.setTransactionSuccessful(c);
-      } catch (JSONException e) {
-        throw new RuntimeException("Malformed JSON from Coinbase", e);
-      } finally {
-        db.endTransaction(c);
-      }
-    }
   }
 
   public static String convertStreamToString(java.io.InputStream is) {

@@ -53,6 +53,9 @@ import roboguice.fragment.RoboFragment;
 import roboguice.inject.InjectResource;
 import roboguice.inject.InjectView;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 public class TransferFragment extends RoboFragment implements CoinbaseFragment {
   protected enum TransferType {
     SEND(R.string.transfer_send_money, "send"),
@@ -418,9 +421,10 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
                         .convertedTo(otherCurrency, mNativeExchangeRates.get(exchangeRateKey))
                         .toMoney(RoundingMode.HALF_EVEN);
 
-    mNativeAmount.setText(
-            String.format(mNativeAmountFormatString, Utils.formatMoneyRounded(converted))
-    );
+    mNativeAmount.setText(String.format(
+                    mNativeAmountFormatString,
+                    Utils.formatMoneyRounded(converted)
+    ));
   }
 
   @TargetApi(Build.VERSION_CODES.HONEYCOMB)

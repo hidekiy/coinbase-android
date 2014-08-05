@@ -22,6 +22,8 @@ public class TransactionsAppWidgetProvider extends AppWidgetProvider {
     @Override
     public void updateWidget(Context context, AppWidgetManager manager, int appWidgetId, String balance) {
 
+      /* TODO
+
       int accountId = PreferenceManager.getDefaultSharedPreferences(context).getInt(
           String.format(Constants.KEY_WIDGET_ACCOUNT, appWidgetId), -1);
       Intent intent = new Intent(context, TransactionsRemoteViewsService.class);
@@ -47,6 +49,8 @@ public class TransactionsAppWidgetProvider extends AppWidgetProvider {
 
       Log.i("Coinbase", "Updating transactions widget " + appWidgetId + " with balance " + balance);
       manager.updateAppWidget(appWidgetId, rv);
+
+      */
     }
 
   }

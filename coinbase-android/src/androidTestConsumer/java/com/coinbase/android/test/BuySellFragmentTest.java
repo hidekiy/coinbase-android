@@ -46,7 +46,7 @@ public class BuySellFragmentTest extends MockApiTest {
     getInstrumentation().waitForIdleSync();
 
     assertTrue(getSolo().searchText("\\$655\\.90"));   // Total displayed for confirmation
-    assertTrue(getSolo().searchText("BTC1\\.1"));   // Amount displayed for confirmation
+    assertTrue(getSolo().searchText("฿1\\.1"));   // Amount displayed for confirmation
     getSolo().clickOnButton("OK");
 
     getSolo().sleep(500);
@@ -69,7 +69,7 @@ public class BuySellFragmentTest extends MockApiTest {
     assertTrue(getSolo().searchText("\\$642\\.61"));   // Total
     getSolo().clickOnButton("Sell");
     assertTrue(getSolo().searchText("\\$642\\.61"));   // Total displayed for confirmation
-    assertTrue(getSolo().searchText("BTC1\\.1"));   // Amount displayed for confirmation
+    assertTrue(getSolo().searchText("฿1\\.1"));   // Amount displayed for confirmation
     getSolo().clickOnButton("OK");
 
     getSolo().sleep(500);
@@ -91,12 +91,12 @@ public class BuySellFragmentTest extends MockApiTest {
     assertTrue(getSolo().searchText("\\$655\\.90"));   // Total
     getSolo().clickOnButton("Buy");
     assertTrue(getSolo().searchText("\\$655\\.90"));   // Total displayed for confirmation
-    assertTrue(getSolo().searchText("BTC1\\.1"));   // Amount displayed for confirmation
+    assertTrue(getSolo().searchText("฿1\\.1"));   // Amount displayed for confirmation
     getSolo().setActivityOrientation(Solo.LANDSCAPE);
     getInstrumentation().waitForIdleSync();
     // Dialog still exists
     assertTrue(getSolo().searchText("\\$655\\.90"));   // Total displayed for confirmation
-    assertTrue(getSolo().searchText("BTC1\\.1"));   // Amount displayed for confirmation
+    assertTrue(getSolo().searchText("฿1\\.1"));   // Amount displayed for confirmation
     getSolo().clickOnButton("OK");
 
     getSolo().sleep(500);

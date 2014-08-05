@@ -2,16 +2,13 @@ package com.coinbase.android;
 
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
 import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -20,9 +17,6 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.coinbase.android.db.DatabaseObject;
-import com.coinbase.android.db.TransactionsDatabase;
-import com.coinbase.android.db.TransactionsDatabase.TransactionEntry;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.api.RpcManager;
 import com.google.inject.Inject;
@@ -38,6 +32,8 @@ import java.text.SimpleDateFormat;
 
 import roboguice.fragment.RoboFragment;
 import roboguice.util.RoboAsyncTask;
+
+/*
 
 public class TransactionDetailsFragment extends RoboFragment {
 
@@ -514,3 +510,5 @@ public class TransactionDetailsFragment extends RoboFragment {
     }
   }
 }
+
+*/

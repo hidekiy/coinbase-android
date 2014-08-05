@@ -450,4 +450,9 @@ public class ProductionLoginManager implements LoginManager {
     int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     return prefs.getString(String.format(Constants.KEY_ACCOUNT_RECEIVE_ADDRESS, activeAccount), null);
   }
+
+  @Override
+  public String getActiveAccountId() {
+    return "testAccountId"; // TODO
+  }
 }

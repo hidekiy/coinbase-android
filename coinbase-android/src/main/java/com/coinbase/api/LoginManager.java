@@ -52,4 +52,6 @@ public interface LoginManager {
   boolean isSignedIn();
 
   String getReceiveAddress();
+
+  String getActiveAccountId();
 }

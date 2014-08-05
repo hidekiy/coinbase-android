@@ -1,5 +1,7 @@
 package com.coinbase.android.test;
 
+import com.coinbase.api.entity.AccountChange;
+import com.coinbase.api.entity.AccountChangesResponse;
 import com.coinbase.api.entity.Address;
 import com.coinbase.api.entity.AddressResponse;
 import com.coinbase.api.entity.AddressesResponse;
@@ -7,12 +9,14 @@ import com.coinbase.api.entity.Contact;
 import com.coinbase.api.entity.ContactsResponse;
 import com.coinbase.api.entity.Quote;
 import com.coinbase.api.entity.Response;
+import com.coinbase.api.entity.Transaction;
 import com.coinbase.api.entity.Transfer;
 import com.coinbase.api.entity.User;
 import com.coinbase.api.entity.UserResponse;
 
 import org.joda.money.CurrencyUnit;
 import org.joda.money.Money;
+import org.joda.time.DateTime;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -55,6 +59,21 @@ public class MockResponses {
     user.setTimeZone("Pacific Time (US & Canada)");
     user.setNativeCurrency(USD);
     user.setBalance(Money.parse("BTC 1"));
+    user.setBuyLevel(1);
+    user.setSellLevel(1);
+    user.setBuyLimit(Money.parse("USD 3000"));
+    user.setSellLimit(Money.parse("USD 3000"));
+    return user;
+  }
+
+  public static User mockCurrentUser() {
+    User user = new User();
+    user.setId("MockCurrentUserId");
+    user.setName("Test Current User");
+    user.setEmail("currentuser@example.com");
+    user.setTimeZone("Pacific Time (US & Canada)");
+    user.setNativeCurrency(USD);
+    user.setBalance(Money.parse("BTC 1.00"));
     user.setBuyLevel(1);
     user.setSellLevel(1);
     user.setBuyLimit(Money.parse("USD 3000"));
@@ -151,6 +170,81 @@ public class MockResponses {
 
     result.setContacts(contacts);
     return result;
+  }
+
+  public static Transaction mockConfirmedReceivedTransaction() {
+    Transaction result = new Transaction();
+    result.setAmount(Money.parse("BTC 1.23"));
+    result.setSender(mockUser());
+    result.setRecipient(mockCurrentUser());
+    result.setRequest(false);
+    result.setCreatedAt(DateTime.now());
+    result.setId("transId123"); // TODO this should be random
+    result.setConfirmations(6);
+
+    return result;
+  }
+
+  public static Transaction mockPendingReceivedTransaction() {
+    Transaction result = mockConfirmedReceivedTransaction();
+    result.setConfirmations(0);
+
+    return result;
+  }
+
+  public static Transaction mockConfirmedSentTransaction() {
+    Transaction result = mockConfirmedReceivedTransaction();
+    result.setAmount(result.getAmount().negated());
+
+    User tmp;
+    tmp = result.getSender();
+    result.setSender(result.getRecipient());
+    result.setRecipient(tmp);
+
+    return result;
+  }
+
+  public static AccountChange mockAccountChange(Transaction transaction) {
+    AccountChange change = new AccountChange();
+    AccountChange.Cache cache = new AccountChange.Cache();
+    change.setCache(cache);
+    cache.setCategory(AccountChange.Cache.Category.TRANSACTION);
+    if (transaction.getAmount().isPositive()) {
+      cache.setOtherUser(transaction.getSender());
+    } else if (transaction.getAmount().isNegative()) {
+      cache.setOtherUser(transaction.getRecipient());
+    }
+    change.setAmount(transaction.getAmount());
+    change.setConfirmed(transaction.getConfirmations() > 0);
+    change.setTransactionId(transaction.getId());
+    change.setCreatedAt(transaction.getCreatedAt());
+
+    return change;
+  }
+
+  public static AccountChangesResponse mockAccountChanges(List<AccountChange> changes) {
+    AccountChangesResponse result = newResponse(AccountChangesResponse.class, changes.size(), 25, changes.size() / 25);
+
+    result.setAccountChanges(changes);
+    result.setCurrentUser(mockCurrentUser());
+    result.setBalance(Money.parse("BTC 1.00"));
+    result.setNativeBalance(Money.parse("USD 600.00"));
+
+    return result;
+  }
+
+  public static AccountChangesResponse mockAccountChanges(AccountChange change) {
+    List<AccountChange> changes = new ArrayList<AccountChange>();
+    changes.add(change);
+    return mockAccountChanges(changes);
+  }
+
+  public static AccountChangesResponse mockAccountChanges() {
+    List<AccountChange> changes = new ArrayList<AccountChange>();
+    changes.add(mockAccountChange(mockConfirmedReceivedTransaction()));
+    changes.add(mockAccountChange(mockPendingReceivedTransaction()));
+    changes.add(mockAccountChange(mockConfirmedSentTransaction()));
+    return mockAccountChanges(changes);
   }
 
   public static <T extends Response> T newResponse(Class<T> clazz, int count, int limit, int page) {

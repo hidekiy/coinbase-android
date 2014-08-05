@@ -541,15 +541,6 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   public void onResume() {
     super.onResume();
 
-    // Refresh
-    if (mTransactionsFragment != null) {
-      mTransactionsFragment.loadTransactionsList();
-    }
-    ((CoinbaseApplication) getApplication()).addMainActivity(this);
-    if((System.currentTimeMillis() - mLastRefreshTime) > RESUME_REFRESH_INTERVAL) {
-      refresh();
-    }
-
     // Legacy support:
     // If the old Point of Sale is enabled, show a dialog directing them to the Play Store
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
