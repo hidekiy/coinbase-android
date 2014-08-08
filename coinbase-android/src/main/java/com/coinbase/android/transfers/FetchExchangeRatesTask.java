@@ -3,7 +3,7 @@ package com.coinbase.android.transfers;
 import android.content.Context;
 import android.widget.Toast;
 
-import com.coinbase.android.ApiTask;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.R;
 
 import java.math.BigDecimal;

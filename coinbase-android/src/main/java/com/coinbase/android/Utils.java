@@ -363,18 +363,6 @@ public class Utils {
     return Html.fromHtml(html);
   }
 
-  public static String getErrorStringFromJson(JSONObject response, String delimiter) throws JSONException {
-
-
-    JSONArray errors = response.getJSONArray("errors");
-    String errorMessage = "";
-
-    for(int i = 0; i < errors.length(); i++) {
-      errorMessage += (errorMessage.equals("") ? "" : delimiter) + errors.getString(i);
-    }
-    return errorMessage;
-  }
-
   @TargetApi(Build.VERSION_CODES.HONEYCOMB)
   public static <T> void runAsyncTaskConcurrently(AsyncTask<T, ?, ?> task, T... params) {
 

@@ -6,9 +6,8 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
 
-import com.coinbase.android.ApiTask;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.R;
-import com.coinbase.android.Utils;
 import com.coinbase.android.event.UserDataUpdatedEvent;
 import com.coinbase.api.entity.User;
 import com.google.inject.Inject;

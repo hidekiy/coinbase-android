@@ -3,23 +3,13 @@ package com.coinbase.android.settings;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
-import com.coinbase.android.ApiTask;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.Constants;
-import com.coinbase.android.Utils;
 import com.coinbase.android.event.UserDataUpdatedEvent;
-import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.User;
-import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
-
-import org.acra.ACRA;
-
-import java.io.IOException;
-
-import roboguice.util.RoboAsyncTask;
 
 class RefreshSettingsTask extends ApiTask<User> {
 

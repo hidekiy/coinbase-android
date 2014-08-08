@@ -17,7 +17,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.coinbase.android.ApiTask;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.CoinbaseFragment;
 import com.coinbase.android.Constants;
 import com.coinbase.android.R;

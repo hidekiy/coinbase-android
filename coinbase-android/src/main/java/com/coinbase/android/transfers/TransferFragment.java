@@ -24,11 +24,10 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.coinbase.android.ApiTask;
 import com.coinbase.android.CoinbaseFragment;
 import com.coinbase.android.Constants;
 import com.coinbase.android.FontManager;
-import com.coinbase.android.GenerateReceiveAddressTask;
+import com.coinbase.android.task.GenerateReceiveAddressTask;
 import com.coinbase.android.PlatformUtils;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;

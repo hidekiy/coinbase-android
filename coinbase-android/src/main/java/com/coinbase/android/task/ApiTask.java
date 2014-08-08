@@ -1,4 +1,4 @@
-package com.coinbase.android;
+package com.coinbase.android.task;
 
 import android.content.Context;
 

@@ -5,20 +5,17 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentTransaction;
-import android.support.v4.app.ListFragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,24 +33,19 @@ import android.widget.WrapperListAdapter;
 
 import com.coinbase.android.db.AccountChangeORM;
 import com.coinbase.android.db.DatabaseManager;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.util.InsertedItemListAdapter;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.AccountChange;
 import com.coinbase.api.entity.AccountChangesResponse;
-import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
 
 import org.acra.ACRA;
 import org.joda.money.CurrencyUnit;
 import org.joda.money.Money;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import roboguice.fragment.RoboListFragment;
@@ -272,10 +264,9 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         return;
       }
 
-      /* TODO
-      String transactionId = c.getString(c.getColumnIndex(TransactionEntry._ID));
+      String transactionId = mAccountChange.getTransactionId();
       Bundle args = new Bundle();
-      args.putString(TransactionDetailsFragment.EXTRA_ID, transactionId);
+      args.putString(TransactionDetailsFragment.ID, transactionId);
       TransactionDetailsFragment fragment = new TransactionDetailsFragment();
       fragment.setArguments(args);
 
@@ -285,7 +276,6 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       transaction.commit();
 
       showDetails();
-      */
     }
   }
 

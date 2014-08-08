@@ -16,6 +16,7 @@ import android.widget.Toast;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
+import com.coinbase.android.task.GenerateReceiveAddressTask;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.Address;
 import com.coinbase.api.entity.AddressesResponse;

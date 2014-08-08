@@ -22,6 +22,7 @@ import android.widget.Toast;
 
 import com.coinbase.android.dialog.ConfirmationDialogFragment;
 import com.coinbase.android.pin.PINManager;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.api.entity.Quote;
 import com.coinbase.api.entity.Transfer;
 import com.coinbase.api.exception.CoinbaseException;

@@ -2,7 +2,7 @@ package com.coinbase.android.transfers;
 
 import android.content.Context;
 
-import com.coinbase.android.ApiTask;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.api.entity.Transaction;
 
 import org.joda.money.Money;

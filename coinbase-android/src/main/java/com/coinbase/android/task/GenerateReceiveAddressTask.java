@@ -1,10 +1,12 @@
-package com.coinbase.android;
+package com.coinbase.android.task;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
+import com.coinbase.android.Constants;
 import com.coinbase.android.event.ReceiveAddressUpdatedEvent;
+import com.coinbase.android.task.ApiTask;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
 

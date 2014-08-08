@@ -1,5 +1,6 @@
 package com.coinbase.android.test;
 
+import com.coinbase.android.R;
 import com.coinbase.android.TestTransactionsFragmentActivity;
 import com.coinbase.android.TestTransferFragmentActivity;
 import com.coinbase.api.entity.AccountChangesResponse;
@@ -52,7 +53,11 @@ public class TransactionsFragmentTest extends MockApiTest {
 
     assertTrue(getSolo().searchText("Test User sent you money"));
     assertFalse(getSolo().searchText("Pending"));
-    assertTrue(getSolo().searchText("฿1.230"));
+    assertTrue(getSolo().searchText("฿1.2300"));
+
+    getSolo().clickOnText("You sent money to Test User");
+
+    assertTrue(getSolo().searchText("฿1.2300"));
   }
 
   public void testReceivedPending() throws Exception {
@@ -65,7 +70,10 @@ public class TransactionsFragmentTest extends MockApiTest {
 
     assertTrue(getSolo().searchText("Test User sent you money"));
     assertTrue(getSolo().searchText("PENDING"));
-    assertTrue(getSolo().searchText("฿1.230"));
+    assertTrue(getSolo().searchText("฿1.2300"));
+
+    getSolo().clickOnText("You sent money to Test User");
+    assertTrue(getSolo().searchText("฿1.2300"));
   }
 
   public void testSentConfirmed() throws Exception {
@@ -77,7 +85,9 @@ public class TransactionsFragmentTest extends MockApiTest {
     startTestActivity();
 
     assertTrue(getSolo().searchText("You sent money to Test User"));
-    assertTrue(getSolo().searchText("฿1.230"));
-  }
+    assertTrue(getSolo().searchText("฿1.2300"));
 
+    getSolo().clickOnText("You sent money to Test User");
+    assertTrue(getSolo().searchText("฿1.2300"));
+  }
 }

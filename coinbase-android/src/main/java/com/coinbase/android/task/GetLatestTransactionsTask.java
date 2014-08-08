@@ -1,7 +1,8 @@
-package com.coinbase.android;
+package com.coinbase.android.task;
 
 import android.content.Context;
 
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.api.entity.Transaction;
 
 import java.util.List;

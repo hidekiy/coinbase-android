@@ -4,14 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
-import com.coinbase.android.ApiTask;
+import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.Constants;
-import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.Address;
 import com.coinbase.api.entity.AddressesResponse;
-import com.google.inject.Inject;
-
-import roboguice.util.RoboAsyncTask;
 
 class LoadReceiveAddressTask extends ApiTask<Address> {
   public LoadReceiveAddressTask(Context context) {

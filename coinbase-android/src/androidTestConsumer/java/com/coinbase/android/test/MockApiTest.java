@@ -26,6 +26,7 @@ import org.joda.money.Money;
 import roboguice.RoboGuice;
 import roboguice.config.DefaultRoboModule;
 
+import static com.coinbase.android.test.MockResponses.mockCurrentUser;
 import static com.coinbase.android.test.MockResponses.mockUser;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
@@ -88,7 +89,7 @@ public abstract class MockApiTest extends ActivityInstrumentationTestCase2 {
     doReturn(mockCoinbase).when(mockLoginManager).getClient(anyInt());
     doReturn(1).when(mockLoginManager).getActiveAccount();
     doReturn(true).when(mockLoginManager).isSignedIn();
-    doReturn(mockUser().getId()).when(mockLoginManager).getActiveUserId();
+    doReturn(mockCurrentUser().getId()).when(mockLoginManager).getActiveUserId();
     doReturn("mockAccountId").when(mockLoginManager).getActiveAccountId();
 
     Application application = getActivity().getApplication();
@@ -146,6 +147,7 @@ public abstract class MockApiTest extends ActivityInstrumentationTestCase2 {
     verify(mockCoinbase, atLeast(0)).getTransactions();
     verify(mockCoinbase, atLeast(0)).getAccountChanges();
     verify(mockCoinbase, atLeast(0)).getAccountChanges(anyInt());
+    verify(mockCoinbase, atLeast(0)).getTransaction(anyString());
   }
 
   protected Solo getSolo() {
