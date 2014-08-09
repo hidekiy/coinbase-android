@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.coinbase.android.test.MockResponses.mockContacts;
+import static com.coinbase.android.test.MockResponses.mockCurrentUser;
 import static com.coinbase.android.test.MockResponses.mockExchangeRates;
 import static com.coinbase.android.test.MockResponses.mockUser;
 import static org.mockito.Matchers.any;
@@ -139,7 +140,7 @@ public class TransferFragmentTest extends MockApiTest {
     mockReceivedTransaction.setRequest(false);
     mockReceivedTransaction.setCreatedAt(DateTime.now());
     mockReceivedTransaction.setAmount(Money.parse("BTC 1"));
-    mockReceivedTransaction.setRecipient(mockUser());
+    mockReceivedTransaction.setRecipient(mockCurrentUser());
     mockResponse.getTransactions().add(mockReceivedTransaction);
 
     assertTrue(getSolo().searchText("Received ฿1.0000, but you requested"));
@@ -176,7 +177,7 @@ public class TransferFragmentTest extends MockApiTest {
     mockReceivedTransaction.setRequest(false);
     mockReceivedTransaction.setCreatedAt(DateTime.now());
     mockReceivedTransaction.setAmount(Money.parse("BTC 2"));
-    mockReceivedTransaction.setRecipient(mockUser());
+    mockReceivedTransaction.setRecipient(mockCurrentUser());
     mockResponse.getTransactions().add(mockReceivedTransaction);
 
     getSolo().sleep(1000);
@@ -211,7 +212,7 @@ public class TransferFragmentTest extends MockApiTest {
     mockReceivedTransaction.setRequest(false);
     mockReceivedTransaction.setCreatedAt(DateTime.now());
     mockReceivedTransaction.setAmount(Money.parse("BTC 1"));
-    mockReceivedTransaction.setRecipient(mockUser());
+    mockReceivedTransaction.setRecipient(mockCurrentUser());
     mockResponse.getTransactions().add(mockReceivedTransaction);
 
     assertTrue(getSolo().searchText("Received ฿1.0000, but you requested"));

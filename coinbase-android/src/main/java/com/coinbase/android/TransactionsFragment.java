@@ -33,12 +33,16 @@ import android.widget.WrapperListAdapter;
 
 import com.coinbase.android.db.AccountChangeORM;
 import com.coinbase.android.db.DatabaseManager;
+import com.coinbase.android.db.TransactionORM;
+import com.coinbase.android.event.TransactionsSyncedEvent;
 import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.util.InsertedItemListAdapter;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.AccountChange;
 import com.coinbase.api.entity.AccountChangesResponse;
+import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
+import com.squareup.otto.Bus;
 
 import org.acra.ACRA;
 import org.joda.money.CurrencyUnit;
@@ -65,6 +69,10 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
     @Inject
     private DatabaseManager mDbManager;
+
+    @Inject
+    private Bus mBus;
+
     private Integer mStartPage;
 
     public SyncTransactionsTask(Context context, Integer startPage) {
@@ -74,7 +82,6 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
     @Override
     public Void call() throws Exception {
-      String currentUserId = null;
       String activeAccount = mLoginManager.getActiveAccountId();
       int startPage = (mStartPage == null) ? 0 : mStartPage;
       int numPages = 1; // Real value will be set after first list iteration
@@ -86,7 +93,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       // (we do it here to update the balance ASAP.)
       final Money btcBalance = response.getBalance();
       final Money nativeBalance = response.getNativeBalance();
-      mParent.runOnUiThread(new Runnable() {
+      mParentActivity.runOnUiThread(new Runnable() {
         public void run() {
           mBalanceBtc = btcBalance;
           mBalanceNative = nativeBalance;
@@ -94,23 +101,13 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         }
       });
 
-      currentUserId = response.getCurrentUser().getId();
-
       List<AccountChange> accountChanges = response.getAccountChanges();
       numPages = response.getNumPages();
       loadedPage++;
 
       mMaxPage = numPages;
 
-      /* TODO Also fetch extra info from /transactions call for first ~30 transactions
       List<Transaction> transactions = getClient().getTransactions().getTransactions();
-      HashMap<String, Transaction> transactionsMap = new HashMap<String, Transaction>();
-      if (transactions != null) {
-        for (Transaction transaction : transactions) {
-          transactionsMap.put(transaction.getId(), transaction);
-        }
-      }
-      */
 
       SQLiteDatabase db = mDbManager.openDatabase();
       try {
@@ -124,7 +121,11 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
           AccountChangeORM.insert(db, activeAccount, accountChange);
         }
 
-        // TODO insert transactions to cache
+        if (transactions != null) {
+          for (Transaction transaction : transactions) {
+            TransactionORM.insertOrUpdate(db, activeAccount, transaction);
+          }
+        }
 
         db.setTransactionSuccessful();
         mLastLoadedPage = loadedPage;
@@ -140,16 +141,16 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     private void updateWidgets() {
       if(PlatformUtils.hasHoneycomb()) {
-        AppWidgetManager widgetManager = AppWidgetManager.getInstance(mParent);
+        AppWidgetManager widgetManager = AppWidgetManager.getInstance(mParentActivity);
         widgetManager.notifyAppWidgetViewDataChanged(
-          widgetManager.getAppWidgetIds(new ComponentName(mParent, TransactionsAppWidgetProvider.class)),
+          widgetManager.getAppWidgetIds(new ComponentName(mParentActivity, TransactionsAppWidgetProvider.class)),
           R.id.widget_list);
       }
     }
 
     @Override
     protected void onPreExecute() {
-      // TODO mParent.setRefreshButtonAnimated(true);
+      mListener.onStartTransactionsSync();
       mBalanceBtc = mBalanceNative = null;
 
       if(mSyncErrorView != null) {
@@ -165,11 +166,10 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       // Update transaction widgets
       updateWidgets();
 
-      // TODO Update the buy / sell history list
-      // mParent.getBuySellFragment().onTransactionsSynced();
+      mBus.post(new TransactionsSyncedEvent());
 
       // TODO Successful sync. This is a good time to check for any left over delayed TX.
-      // mParent.startService(new Intent(mParent, DelayedTxSenderService.class));
+      // mParentActivity.startService(new Intent(mParentActivity, DelayedTxSenderService.class));
     }
 
     @Override
@@ -179,19 +179,19 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
         // If we're disconnected from the internet, a sync error is expected, so
         // don't show an alarming red error message
-        if (Utils.isConnectedOrConnecting(mParent)) {
+        if (Utils.isConnectedOrConnecting(mParentActivity)) {
           // Problem
           mSyncErrorView.setText(R.string.transactions_refresh_error);
-          mSyncErrorView.setBackgroundColor(mParent.getResources().getColor(R.color.transactions_sync_error_critical));
+          mSyncErrorView.setBackgroundColor(mParentActivity.getResources().getColor(R.color.transactions_sync_error_critical));
         } else {
           // Internet is just disconnected
           mSyncErrorView.setText(R.string.transactions_internet_error);
-          mSyncErrorView.setBackgroundColor(mParent.getResources().getColor(R.color.transactions_sync_error_calm));
+          mSyncErrorView.setBackgroundColor(mParentActivity.getResources().getColor(R.color.transactions_sync_error_calm));
         }
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParentActivity);
         int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-        if (mLoginManager.getAccountValid(mParent, activeAccount) != null) {
+        if (mLoginManager.getAccountValid(mParentActivity, activeAccount) != null) {
           // Request failed because account is no longer valid
           if (getFragmentManager() != null) {
             new AccountInvalidDialogFragment().show(getFragmentManager(), "accountinvalid");
@@ -204,9 +204,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     @Override
     public void onFinally() {
       mSyncTask = null;
-      // TODO mParent.setRefreshButtonAnimated(false);
+      mListener.onFinishTransactionsSync();
     }
-
   }
 
   private interface TransactionDisplayItem {
@@ -236,12 +235,12 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
       statusView.setText(readable);
       statusView.setTextColor(getResources().getColor(scolor));
-      statusView.setTypeface(FontManager.getFont(mParent, "RobotoCondensed-Regular"));
+      statusView.setTypeface(FontManager.getFont(mParentActivity, "RobotoCondensed-Regular"));
     }
 
     public void configureTitleView (TextView titleView) {
-      titleView.setText(Utils.generateAccountChangeSummary(mParent, mAccountChange));
-      titleView.setTypeface(FontManager.getFont(mParent, "Roboto-Light"));
+      titleView.setText(Utils.generateAccountChangeSummary(mParentActivity, mAccountChange));
+      titleView.setTypeface(FontManager.getFont(mParentActivity, "Roboto-Light"));
     }
 
     public void configureAmountView (TextView amountView) {
@@ -361,10 +360,10 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         mListFooter.setVisibility(canLoadMorePages() ? View.VISIBLE : View.GONE);
 
         // "rate me" notice
-        Constants.RateNoticeState rateNoticeState = Constants.RateNoticeState.valueOf(Utils.getPrefsString(mParent, Constants.KEY_ACCOUNT_RATE_NOTICE_STATE, Constants.RateNoticeState.NOTICE_NOT_YET_SHOWN.name()));
+        Constants.RateNoticeState rateNoticeState = Constants.RateNoticeState.valueOf(Utils.getPrefsString(mParentActivity, Constants.KEY_ACCOUNT_RATE_NOTICE_STATE, Constants.RateNoticeState.NOTICE_NOT_YET_SHOWN.name()));
         boolean showRateNotice = rateNoticeState == Constants.RateNoticeState.SHOULD_SHOW_NOTICE;
 
-        TransactionsAdapter adapter = new TransactionsAdapter(mParent, items);
+        TransactionsAdapter adapter = new TransactionsAdapter(mParentActivity, items);
 
         View rateNotice = getRateNotice();
         InsertedItemListAdapter wrappedAdapter = new InsertedItemListAdapter(adapter, rateNotice, 2);
@@ -406,7 +405,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
   }
 
-  Activity mParent;
+  Activity mParentActivity;
+  TransactionsFragmentListener mListener;
 
   boolean mBalanceLoading, mAnimationPlaying;
   FrameLayout mListHeaderContainer;
@@ -428,7 +428,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   @Override
   public void onAttach(Activity activity) {
     super.onAttach(activity);
-    mParent = activity;
+    mParentActivity = activity;
+    mListener = (TransactionsFragmentListener) mParentActivity;
   }
 
   @Override
@@ -454,7 +455,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
     // Inflate header (which contains account balance)
     mListHeader = (ViewGroup) inflater.inflate(R.layout.fragment_transactions_header, null, false);
-    mListHeaderContainer = new FrameLayout(mParent);
+    mListHeaderContainer = new FrameLayout(mParentActivity);
     setHeaderPinned(true);
     mListView.addHeaderView(mListHeaderContainer);
 
@@ -464,7 +465,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     mListView.addFooterView(listFooterParent);
 
     // Header card swipe
-    boolean showBalance = Utils.getPrefsBool(mParent, Constants.KEY_ACCOUNT_SHOW_BALANCE, true);
+    boolean showBalance = Utils.getPrefsBool(mParentActivity, Constants.KEY_ACCOUNT_SHOW_BALANCE, true);
     mListHeader.findViewById(R.id.wallet_layout).setVisibility(showBalance ? View.VISIBLE : View.GONE);
     mListHeader.findViewById(R.id.wallet_hidden_notice).setVisibility(showBalance ? View.GONE : View.VISIBLE);
     final BalanceTouchListener balanceTouchListener = new BalanceTouchListener(mListHeader.findViewById(R.id.wallet_layout),
@@ -477,8 +478,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         mListHeader.findViewById(R.id.wallet_hidden_notice).setVisibility(View.VISIBLE);
 
         // Save in preferences
-        PreferenceManager.getDefaultSharedPreferences(mParent).edit()
-                .putBoolean(String.format(Constants.KEY_ACCOUNT_SHOW_BALANCE, Utils.getActiveAccount(mParent)), false)
+        PreferenceManager.getDefaultSharedPreferences(mParentActivity).edit()
+                .putBoolean(String.format(Constants.KEY_ACCOUNT_SHOW_BALANCE, Utils.getActiveAccount(mParentActivity)), false)
                 .commit();
       }
     });
@@ -500,8 +501,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         balanceTouchListener.reset();
 
         // Save in preferences
-        PreferenceManager.getDefaultSharedPreferences(mParent).edit()
-                .putBoolean(String.format(Constants.KEY_ACCOUNT_SHOW_BALANCE, Utils.getActiveAccount(mParent)), true)
+        PreferenceManager.getDefaultSharedPreferences(mParentActivity).edit()
+                .putBoolean(String.format(Constants.KEY_ACCOUNT_SHOW_BALANCE, Utils.getActiveAccount(mParentActivity)), true)
                 .commit();
       }
     });
@@ -513,23 +514,23 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     mSyncErrorView = (TextView) mListHeader.findViewById(R.id.wallet_error);
 
     ((TextView) mBaseView.findViewById(R.id.wallet_balance_label)).setTypeface(
-            FontManager.getFont(mParent, "RobotoCondensed-Regular"));
+            FontManager.getFont(mParentActivity, "RobotoCondensed-Regular"));
     ((TextView) mBaseView.findViewById(R.id.wallet_send_label)).setTypeface(
-           FontManager.getFont(mParent, "RobotoCondensed-Regular"));
+           FontManager.getFont(mParentActivity, "RobotoCondensed-Regular"));
 
     mBalanceText.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        Utils.togglePrefsBool(mParent, Constants.KEY_ACCOUNT_BALANCE_FUZZY, true);
+        Utils.togglePrefsBool(mParentActivity, Constants.KEY_ACCOUNT_BALANCE_FUZZY, true);
         setBalance((Money) v.getTag());
       }
     });
 
     // Load old balance
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParentActivity);
     int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     String oldBalance = prefs.getString(String.format(Constants.KEY_ACCOUNT_BALANCE, activeAccount), null);
-    String oldHomeBalance = prefs.getString(String.format(Constants.KEY_ACCOUNT_BALANCE_HOME, activeAccount), null);
+    String oldHomeBalanceString = prefs.getString(String.format(Constants.KEY_ACCOUNT_BALANCE_HOME, activeAccount), null);
     String oldHomeCurrency = prefs.getString(String.format(Constants.KEY_ACCOUNT_BALANCE_HOME_CURRENCY, activeAccount), null);
 
     if(oldBalance != null) {
@@ -541,16 +542,19 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         // Restoring balance will fail on upgrade, so just ignore it
         // and reload the balance from the network
       }
-      mBalanceText.setTextColor(mParent.getResources().getColor(R.color.wallet_balance_color));
-      mBalanceHome.setText(String.format(mParent.getString(R.string.wallet_balance_home), oldHomeBalance));
+      mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color));
+
+      if (oldHomeCurrency != null && oldHomeBalanceString != null) {
+        Money oldHomeBalance = Money.of(CurrencyUnit.getInstance(oldHomeCurrency), new BigDecimal(oldHomeBalanceString));
+        mBalanceHome.setText(String.format(mParentActivity.getString(R.string.wallet_balance_home), Utils.formatMoney(oldHomeBalance)));
+      }
     }
 
     if(mBalanceLoading) {
-      mBalanceText.setTextColor(mParent.getResources().getColor(R.color.wallet_balance_color_invalid));
+      mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color_invalid));
     }
 
     mBaseView.findViewById(R.id.wallet_send).setOnClickListener(new View.OnClickListener() {
-
       @Override
       public void onClick(View v) {
         // TODO open transfer menu
@@ -571,10 +575,10 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   @Override
   public void onStart() {
     // Configure pull to refresh
-    mPullToRefreshLayout = new PullToRefreshLayout(mParent);
+    mPullToRefreshLayout = new PullToRefreshLayout(mParentActivity);
     AbsDefaultHeaderTransformer ht =
             (AbsDefaultHeaderTransformer) new AbsDefaultHeaderTransformer();
-    ActionBarPullToRefresh.from(mParent)
+    ActionBarPullToRefresh.from(mParentActivity)
             .insertLayoutInto(mBaseView)
             .theseChildrenArePullable(android.R.id.list)
             .listener(new OnRefreshListener() {
@@ -599,7 +603,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   }
 
   private void setBalance(Money balance) {
-    boolean fuzzy = Utils.getPrefsBool(mParent, Constants.KEY_ACCOUNT_BALANCE_FUZZY, true);
+    boolean fuzzy = Utils.getPrefsBool(mParentActivity, Constants.KEY_ACCOUNT_BALANCE_FUZZY, true);
     String balanceString;
     if (fuzzy) {
       balanceString = Utils.formatMoneyRounded(mBalanceBtc);
@@ -616,9 +620,9 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       return mRateNotice;
     }
 
-    View rateNotice = View.inflate(mParent, R.layout.fragment_transactions_rate_notice, null);
+    View rateNotice = View.inflate(mParentActivity, R.layout.fragment_transactions_rate_notice, null);
 
-    ((TextView) rateNotice.findViewById(R.id.rate_notice_title)).setTypeface(FontManager.getFont(mParent, "Roboto-Light"));
+    ((TextView) rateNotice.findViewById(R.id.rate_notice_title)).setTypeface(FontManager.getFont(mParentActivity, "Roboto-Light"));
 
     TextView btnPositive = (TextView) rateNotice.findViewById(R.id.rate_notice_btn_positive),
             btnNegative = (TextView) rateNotice.findViewById(R.id.rate_notice_btn_negative);
@@ -645,12 +649,12 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
   public void setRateNoticeState(Constants.RateNoticeState state, boolean force) {
 
-    Constants.RateNoticeState rateNoticeState = Constants.RateNoticeState.valueOf(Utils.getPrefsString(mParent, Constants.KEY_ACCOUNT_RATE_NOTICE_STATE, Constants.RateNoticeState.NOTICE_NOT_YET_SHOWN.name()));
+    Constants.RateNoticeState rateNoticeState = Constants.RateNoticeState.valueOf(Utils.getPrefsString(mParentActivity, Constants.KEY_ACCOUNT_RATE_NOTICE_STATE, Constants.RateNoticeState.NOTICE_NOT_YET_SHOWN.name()));
     if (rateNoticeState == Constants.RateNoticeState.NOTICE_DISMISSED && !force) {
       return;
     }
 
-    Utils.putPrefsString(mParent, Constants.KEY_ACCOUNT_RATE_NOTICE_STATE, state.name());
+    Utils.putPrefsString(mParentActivity, Constants.KEY_ACCOUNT_RATE_NOTICE_STATE, state.name());
     if (getAdapter() != null) {
       getAdapter(InsertedItemListAdapter.class).setInsertedViewVisible(state == Constants.RateNoticeState.SHOULD_SHOW_NOTICE);
       getAdapter().notifyDataSetChanged();
@@ -660,7 +664,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   // Refresh just account balance.
   private void refreshBalance() {
     mBalanceLoading = true;
-    mBalanceText.setTextColor(mParent.getResources().getColor(R.color.wallet_balance_color_invalid));
+    mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color_invalid));
     // TODO new LoadJustBalanceTask().execute();
   }
 
@@ -673,7 +677,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     mBalanceLoading = false;
 
     try {
-      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
+      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParentActivity);
       int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
 
       // Save balance in preferences
@@ -684,7 +688,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       editor.commit();
 
       // Update the view.
-      mBalanceText.setTextColor(mParent.getResources().getColor(R.color.wallet_balance_color));
+      mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color));
       setBalance(mBalanceBtc);
       mBalanceHome.setText(String.format(mNativeBalanceFormatString, Utils.formatMoney(mBalanceNative)));
     } catch (Exception e) {
@@ -696,11 +700,11 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   public void refresh() {
     // Make balance appear invalidated
     mBalanceLoading = true;
-    mBalanceText.setTextColor(mParent.getResources().getColor(R.color.wallet_balance_color_invalid));
+    mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color_invalid));
 
     // Reload transactions + balance
     if(mSyncTask == null) {
-      mSyncTask = new SyncTransactionsTask(mParent, null);
+      mSyncTask = new SyncTransactionsTask(mParentActivity, null);
       mSyncTask.execute();
     }
   }
@@ -728,7 +732,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     if (!PlatformUtils.hasHoneycomb()) {
       // Do not play animation!
       try {
-        Utils.insertTransaction(mParent, transaction, Utils.createAccountChangeForTransaction(mParent, transaction, category), status);
+        Utils.insertTransaction(mParentActivity, transaction, Utils.createAccountChangeForTransaction(mParentActivity, transaction, category), status);
         loadTransactionsList();
       } catch (Exception e) {
         throw new RuntimeException("Malformed JSON from Coinbase", e);
@@ -779,7 +783,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
 
     DisplayMetrics metrics = getResources().getDisplayMetrics();
-    final ImageView fakeListView = new ImageView(mParent);
+    final ImageView fakeListView = new ImageView(mParentActivity);
     fakeListView.setImageBitmap(bitmap);
 
     Matrix m = new Matrix();
@@ -796,9 +800,9 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     JSONObject accountChange;
     View newListItem;
     try {
-      accountChange = Utils.createAccountChangeForTransaction(mParent, transaction, category);
+      accountChange = Utils.createAccountChangeForTransaction(mParentActivity, transaction, category);
 
-      newListItem = View.inflate(mParent, R.layout.fragment_transactions_item, null);
+      newListItem = View.inflate(mParentActivity, R.layout.fragment_transactions_item, null);
       TransactionViewBinder binder = new TransactionViewBinder();
       for (int i : new int[] { R.id.transaction_title, R.id.transaction_amount,
               R.id.transaction_currency }) {
@@ -816,7 +820,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     itemParams.topMargin = heightToCropOff + getListView().getDividerHeight(); // account for divider
     newListItem.setLayoutParams(itemParams);
 
-    final View background = new View(mParent);
+    final View background = new View(mParentActivity);
     background.setBackgroundColor(animateListView ? Color.parseColor("#eeeeee") : Color.WHITE);
     FrameLayout.LayoutParams bgParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, height);
     bgParams.topMargin = heightToCropOff;
@@ -872,7 +876,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
     // Step 4
     // Now that the animation is started, update the actual list values behind-the-scenes
-    Utils.insertTransaction(mParent, transaction, accountChange, status);
+    Utils.insertTransaction(mParentActivity, transaction, accountChange, status);
     loadTransactionsList();
   }
 
@@ -880,7 +884,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
   @TargetApi(Build.VERSION_CODES.HONEYCOMB)
   public void loadTransactionsList() {
-    new LoadTransactionsTask(mParent).execute();
+    new LoadTransactionsTask(mParentActivity).execute();
   }
 
   private TransactionsAdapter getAdapter() {
@@ -907,12 +911,12 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     // 1. animate
     getView().findViewById(R.id.transaction_details_background).setVisibility(View.VISIBLE);
     getView().findViewById(R.id.transaction_details_background).startAnimation(
-            AnimationUtils.loadAnimation(mParent, R.anim.transactiondetails_bg_enter));
+            AnimationUtils.loadAnimation(mParentActivity, R.anim.transactiondetails_bg_enter));
     getView().findViewById(R.id.transaction_details_host).startAnimation(
-            AnimationUtils.loadAnimation(mParent, R.anim.transactiondetails_enter));
+            AnimationUtils.loadAnimation(mParentActivity, R.anim.transactiondetails_enter));
 
     // 2. if necessary, change action bar
-    // TODO mParent.setInTransactionDetailsMode(true);
+    // TODO mParentActivity.setInTransactionDetailsMode(true);
 
     // 3. pull to refresh
     mPullToRefreshLayout.setEnabled(false);
@@ -922,7 +926,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     mDetailsShowing = false;
 
     if(animated) {
-      Animation bg = AnimationUtils.loadAnimation(mParent, R.anim.transactiondetails_bg_exit);
+      Animation bg = AnimationUtils.loadAnimation(mParentActivity, R.anim.transactiondetails_bg_exit);
       bg.setAnimationListener(new Animation.AnimationListener() {
         @Override
         public void onAnimationStart(Animation animation) {
@@ -950,7 +954,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     transaction.commit();
 
     // 2. action bar
-    // TODO mParent.setInTransactionDetailsMode(false);
+    // TODO mParentActivity.setInTransactionDetailsMode(false);
 
     // 3. pull to refresh
     mPullToRefreshLayout.setEnabled(true);
@@ -967,7 +971,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
   @Override
   public void onSwitchedTo() {
-    int appUsageCount = Utils.getPrefsInt(mParent, Constants.KEY_ACCOUNT_APP_USAGE, 0);
+    int appUsageCount = Utils.getPrefsInt(mParentActivity, Constants.KEY_ACCOUNT_APP_USAGE, 0);
     if (appUsageCount >= 2 && !mAnimationPlaying) {
       setRateNoticeState(Constants.RateNoticeState.SHOULD_SHOW_NOTICE, false);
     }
@@ -984,8 +988,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   @Override
   public void onPINPromptSuccessfulReturn() {
     if (mDetailsShowing) {
-      // TODO
-      // ((TransactionDetailsFragment ) getChildFragmentManager().findFragmentById(R.id.transaction_details_host)).onPINPromptSuccessfulReturn();
+      ((TransactionDetailsFragment ) getChildFragmentManager().findFragmentById(R.id.transaction_details_host)).onPINPromptSuccessfulReturn();
     } else {
       // Not used
     }

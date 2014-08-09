@@ -261,14 +261,6 @@ public class Utils {
     return formatCurrencyAmount(amount, false, CurrencyType.BTC);
   }
 
-  public static final String formatCurrencyAmount(String amount, boolean ignoreSign) {
-    return formatCurrencyAmount(new BigDecimal(amount), ignoreSign, CurrencyType.BTC);
-  }
-
-  public static final String formatCurrencyAmount(String amount, boolean ignoreSign, CurrencyType type) {
-    return formatCurrencyAmount(new BigDecimal(amount), ignoreSign, type);
-  }
-
   public static final String formatCurrencyAmount(BigDecimal balanceNumber, boolean ignoreSign, CurrencyType type) {
 
     Locale locale = Locale.getDefault();
@@ -395,14 +387,12 @@ public class Utils {
   }
 
   public static int getActiveAccount(Context c) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
     int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     return activeAccount;
   }
 
   public static String getPrefsString(Context c, String key, String def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
     int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     return prefs.getString(String.format(key, activeAccount), def);
@@ -431,21 +421,6 @@ public class Utils {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
     int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     return prefs.getInt(String.format(key, activeAccount), def);
-  }
-
-  public static boolean putPrefsInt(Context c, String key, int newValue) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.edit().putInt(String.format(key, activeAccount), newValue).commit();
-  }
-
-  public static boolean incrementPrefsInt(Context c, String key) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    int current = prefs.getInt(String.format(key, activeAccount), 0);
-    return prefs.edit().putInt(String.format(key, activeAccount), current + 1).commit();
   }
 
   public static boolean togglePrefsBool(Context c, String key, boolean def) {
@@ -488,31 +463,5 @@ public class Utils {
     boolean isConnected = activeNetwork != null &&
             activeNetwork.isConnectedOrConnecting();
     return isConnected;
-  }
-
-  public static JSONObject createAccountChangeForTransaction(Context c, JSONObject transaction, String category) throws JSONException {
-    JSONObject accountChange = new JSONObject();
-    accountChange.put("transaction_id", transaction.optString("id"));
-    accountChange.put("created_at", transaction.getString("created_at"));
-    accountChange.put("confirmed", !transaction.getString("status").equals("pending"));
-    accountChange.put("amount", transaction.getJSONObject("amount"));
-    JSONObject cache = new JSONObject();
-    cache.put("category", category);
-    boolean thisUserSender = Utils.getPrefsString(c, Constants.KEY_ACCOUNT_ID, "").equals(transaction.getJSONObject("sender").getString("id"));
-    JSONObject otherUser = transaction.optJSONObject(thisUserSender ? "recipient" : "sender");
-    if (otherUser == null) {
-      otherUser = new JSONObject();
-      otherUser.put("id", null);
-      otherUser.put("name", "an external account");
-    }
-    cache.put("other_user", otherUser);
-    accountChange.put("cache", cache);
-    accountChange.put("delayed_transaction", transaction.optJSONObject("delayed_transaction"));
-    return accountChange;
-  }
-
-  public static String convertStreamToString(java.io.InputStream is) {
-    java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-    return s.hasNext() ? s.next() : "";
   }
 }

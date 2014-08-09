@@ -28,6 +28,8 @@ public class TransactionORM implements BaseColumns {
   public static final String COLUMN_RECIPIENT_ID = "recipient_id";
   public static final String COLUMN_RECIPIENT_NAME = "recipient_name";
   public static final String COLUMN_RECIPIENT_EMAIL = "recipient_email";
+  public static final String COLUMN_IS_REQUEST = "is_request";
+  public static final String COLUMN_CONFIRMATIONS = "confirmations";
   public static final String COLUMN_STATUS = "status";
   public static final String COLUMN_NOTES = "notes";
   public static final String COLUMN_CREATED_AT = "created_at";
@@ -50,6 +52,8 @@ public class TransactionORM implements BaseColumns {
                   COLUMN_RECIPIENT_ID      + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_RECIPIENT_NAME    + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_RECIPIENT_EMAIL   + TEXT_TYPE    + COMMA_SEP +
+                  COLUMN_IS_REQUEST        + INTEGER_TYPE + COMMA_SEP +
+                  COLUMN_CONFIRMATIONS     + INTEGER_TYPE + COMMA_SEP +
                   COLUMN_STATUS            + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_NOTES             + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_CREATED_AT        + INTEGER_TYPE +
@@ -81,6 +85,10 @@ public class TransactionORM implements BaseColumns {
       values.put(COLUMN_SENDER_NAME, tx.getSender().getName());
     }
 
+    values.put(COLUMN_IS_REQUEST, tx.isRequest() ? 1 : 0);
+    values.put(COLUMN_CONFIRMATIONS, tx.getConfirmations());
+    values.put(COLUMN_STATUS, tx.getStatus().toString());
+
     return values;
   }
 
@@ -111,6 +119,12 @@ public class TransactionORM implements BaseColumns {
 
     result.setNotes(c.getString(c.getColumnIndex(COLUMN_NOTES)));
 
+    result.setRequest(c.getInt(c.getColumnIndex(COLUMN_IS_REQUEST)) != 0);
+
+    result.setConfirmations(c.getInt(c.getColumnIndex(COLUMN_CONFIRMATIONS)));
+
+    result.setStatus(Transaction.Status.create(c.getString(c.getColumnIndex(COLUMN_STATUS))));
+
     return result;
   }
 
@@ -139,11 +153,10 @@ public class TransactionORM implements BaseColumns {
             COLUMN_CREATED_AT + " DESC"
     );
 
-    if (c.isAfterLast()) {
-      return null;
-    } else {
+    if (c.moveToFirst()) {
       return fromCursor(c);
+    } else {
+      return null;
     }
   }
-
 }

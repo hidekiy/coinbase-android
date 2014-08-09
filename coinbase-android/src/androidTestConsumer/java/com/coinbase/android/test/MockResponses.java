@@ -10,6 +10,7 @@ import com.coinbase.api.entity.ContactsResponse;
 import com.coinbase.api.entity.Quote;
 import com.coinbase.api.entity.Response;
 import com.coinbase.api.entity.Transaction;
+import com.coinbase.api.entity.TransactionsResponse;
 import com.coinbase.api.entity.Transfer;
 import com.coinbase.api.entity.User;
 import com.coinbase.api.entity.UserResponse;
@@ -172,6 +173,19 @@ public class MockResponses {
     return result;
   }
 
+  public static TransactionsResponse mockEmptyTransactionsResponse() {
+    return newResponse(TransactionsResponse.class, 0, 25, 1);
+  }
+
+  public static TransactionsResponse mockTransactionsResponse(Transaction transaction) {
+    TransactionsResponse result = newResponse(TransactionsResponse.class, 1, 25, 1);
+    List<Transaction> transactions = new ArrayList<Transaction>();
+    transactions.add(transaction);
+    result.setTransactions(transactions);
+
+    return result;
+  }
+
   public static Transaction mockConfirmedReceivedTransaction() {
     Transaction result = new Transaction();
     result.setAmount(Money.parse("BTC 1.23"));
@@ -181,6 +195,7 @@ public class MockResponses {
     result.setCreatedAt(DateTime.now());
     result.setId("transId123"); // TODO this should be random
     result.setConfirmations(6);
+    result.setStatus(Transaction.Status.COMPLETE);
 
     return result;
   }
@@ -188,6 +203,7 @@ public class MockResponses {
   public static Transaction mockPendingReceivedTransaction() {
     Transaction result = mockConfirmedReceivedTransaction();
     result.setConfirmations(0);
+    result.setStatus(Transaction.Status.PENDING);
 
     return result;
   }
@@ -204,18 +220,42 @@ public class MockResponses {
     return result;
   }
 
+  public static Transaction mockSentPendingRequestTransaction() {
+    Transaction result = mockConfirmedReceivedTransaction();
+    result.setRequest(true);
+    result.setCreatedAt(DateTime.now());
+    result.setConfirmations(0);
+    result.setStatus(Transaction.Status.PENDING);
+
+    return result;
+  }
+
+  public static Transaction mockReceivedPendingRequestTransaction() {
+    Transaction result = mockConfirmedSentTransaction();
+    result.setRequest(true);
+    result.setCreatedAt(DateTime.now());
+    result.setConfirmations(0);
+    result.setStatus(Transaction.Status.PENDING);
+
+    return result;
+  }
+
   public static AccountChange mockAccountChange(Transaction transaction) {
     AccountChange change = new AccountChange();
     AccountChange.Cache cache = new AccountChange.Cache();
     change.setCache(cache);
-    cache.setCategory(AccountChange.Cache.Category.TRANSACTION);
+    if (transaction.isRequest()) {
+      cache.setCategory(AccountChange.Cache.Category.REQUEST);
+    } else {
+      cache.setCategory(AccountChange.Cache.Category.TRANSACTION);
+    }
     if (transaction.getAmount().isPositive()) {
       cache.setOtherUser(transaction.getSender());
     } else if (transaction.getAmount().isNegative()) {
       cache.setOtherUser(transaction.getRecipient());
     }
     change.setAmount(transaction.getAmount());
-    change.setConfirmed(transaction.getConfirmations() > 0);
+    change.setConfirmed(transaction.getStatus() == Transaction.Status.COMPLETE);
     change.setTransactionId(transaction.getId());
     change.setCreatedAt(transaction.getCreatedAt());
 

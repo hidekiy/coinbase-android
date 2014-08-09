@@ -56,7 +56,7 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 
 public class TransferFragment extends RoboFragment implements CoinbaseFragment {
-  protected enum TransferType {
+  public enum TransferType {
     SEND(R.string.transfer_send_money, "send"),
     REQUEST(R.string.transfer_request_money, "request");
 
@@ -565,24 +565,6 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     boolean isBTC = getSelectedCurrency().getCurrencyCode().equalsIgnoreCase("BTC");
     Utils.putPrefsBool(mParent, Constants.KEY_ACCOUNT_TRANSFER_CURRENCY_BTC, isBTC);
     updateNativeCurrency();
-  }
-
-  private Transaction buildTransaction() {
-    Transaction result = new Transaction();
-    result.setAmount(getEnteredAmountBtc());
-    result.setNotes(getEnteredNotes());
-    // TODO result.setUserFee(feeAmount);
-
-    switch(getSelectedTransferType()) {
-      case SEND:
-        result.setTo(getEnteredRecipient());
-        break;
-      case REQUEST:
-        result.setFrom(getEnteredRecipient());
-        break;
-    }
-
-    return result;
   }
 
   public void fillFormForBitcoinUri(String content) {

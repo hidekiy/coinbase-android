@@ -33,7 +33,6 @@ dependencies {
 
     androidTestCompile 'com.jayway.android.robotium:robotium-solo:5.2.1'
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:1.1'
-    androidTestCompile 'commons-io:commons-io:2.4'
 }
 
 android {

@@ -44,10 +44,10 @@ public abstract class MockApiTest extends ActivityInstrumentationTestCase2 {
    */
   protected Class<? extends Activity> testActivityClass;
 
-  public class MockLoginManagerModule implements Module {
+  public class MockLoginManagerModule extends AbstractModule {
     @Override
-    public void configure(Binder binder) {
-      binder.bind(LoginManager.class).toInstance(mockLoginManager);
+    protected void configure() {
+      bind(LoginManager.class).toInstance(mockLoginManager);
     }
   }
 
@@ -92,7 +92,8 @@ public abstract class MockApiTest extends ActivityInstrumentationTestCase2 {
     doReturn(mockCurrentUser().getId()).when(mockLoginManager).getActiveUserId();
     doReturn("mockAccountId").when(mockLoginManager).getActiveAccountId();
 
-    Application application = getActivity().getApplication();
+    Application application =
+            (Application) getInstrumentation().getTargetContext().getApplicationContext();
     dbManager = new DatabaseManager(application);
 
     Module roboGuiceModule = RoboGuice.newDefaultRoboModule(application);
@@ -120,17 +121,15 @@ public abstract class MockApiTest extends ActivityInstrumentationTestCase2 {
   public void tearDown() throws Exception {
     ignoreSafeApiCalls();
     verifyNoMoreInteractions(mockCoinbase);
-
-    Application app = getActivity().getApplication();
-    DefaultRoboModule defaultModule = RoboGuice.newDefaultRoboModule(app);
-    RoboGuice.setBaseApplicationInjector(app, RoboGuice.DEFAULT_STAGE, defaultModule);
-    getSolo().finishOpenedActivities();
+    solo.finishOpenedActivities();
+    RoboGuice.util.reset();
     super.tearDown();
   }
 
   protected void startTestActivity() {
     final Intent intent = new Intent(getActivity(), testActivityClass);
     solo.getCurrentActivity().startActivity(intent);
+    solo.waitForActivity(testActivityClass);
   }
 
   // We use strict verification to ensure no extraneous unsafe calls are made (purchases/transfers)

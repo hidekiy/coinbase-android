@@ -34,6 +34,7 @@ import com.google.inject.Inject;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
+import org.apache.commons.io.IOUtils;
 import org.joda.money.CurrencyUnit;
 import org.json.JSONArray;
 
@@ -133,7 +134,7 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
     public TimezoneItem() {
       // Load list from resource
       try {
-        String jsonString = Utils.convertStreamToString(getResources().openRawResource(R.raw.time_zones));
+        String jsonString = IOUtils.toString(getResources().openRawResource(R.raw.time_zones), "UTF-8");
         JSONArray json = new JSONArray(jsonString);
         timezones = new Timezone[json.length()];
         for (int i = 0; i < json.length(); i++) {

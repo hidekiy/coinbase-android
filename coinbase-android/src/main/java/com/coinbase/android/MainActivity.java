@@ -45,7 +45,7 @@ import com.squareup.otto.Bus;
 
 @RequiresAuthentication
 @RequiresPIN
-public class MainActivity extends CoinbaseActivity implements AccountsFragment.ParentActivity {
+public class MainActivity extends CoinbaseActivity implements AccountsFragment.ParentActivity, TransactionsFragmentListener {
 
   public static final String ACTION_SCAN = "com.siriusapplications.coinbase.MainActivity.ACTION_SCAN";
   public static final String ACTION_TRANSFER = "com.siriusapplications.coinbase.MainActivity.ACTION_TRANSFER";
@@ -575,8 +575,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
 
   public void openTransferMenu(boolean isRequest) {
     switchTo(FRAGMENT_INDEX_TRANSFER);
-    // TODO
-    // mTransferFragment.switchType(isRequest ? TransferFragment.TransferType.REQUEST.ordinal() : TransferFragment.TransferType.SEND.ordinal());
+    mTransferFragment.switchType(isRequest ? TransferFragment.TransferType.REQUEST : TransferFragment.TransferType.SEND);
   }
 
   @Override
@@ -791,5 +790,20 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     } else {
       mPointOfSaleFragment.refresh();
     }
+  }
+
+  @Override
+  public void onSendMoneyClicked() {
+    openTransferMenu(false);
+  }
+
+  @Override
+  public void onStartTransactionsSync() {
+    setRefreshButtonAnimated(true);
+  }
+
+  @Override
+  public void onFinishTransactionsSync() {
+    setRefreshButtonAnimated(false);
   }
 }

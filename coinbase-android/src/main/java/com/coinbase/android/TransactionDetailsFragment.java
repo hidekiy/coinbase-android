@@ -148,13 +148,13 @@ public class TransactionDetailsFragment extends RoboFragment {
     public void onFinally() {
       mDialog.dismiss();
 
-      if (context instanceof MainActivity) {
+      if (context instanceof TransactionDetailsActivity) {
+        ((Activity) context).finish();
+      } else {
         /* TODO refresh and shit
         ((MainActivity) getActivity()).refresh();
-        ((TransactionsFragment) getParentFragment()).hideDetails(true);
         */
-      } else {
-        ((Activity) context).finish();
+        ((TransactionsFragment) getParentFragment()).hideDetails(true);
       }
     }
   }
@@ -200,13 +200,13 @@ public class TransactionDetailsFragment extends RoboFragment {
     public void onFinally() {
       mDialog.dismiss();
 
-      if (context instanceof MainActivity) {
+      if (context instanceof TransactionDetailsActivity) {
+        ((Activity) context).finish();
+      } else {
         /* TODO refresh and shit
         ((MainActivity) getActivity()).refresh();
-        ((TransactionsFragment) getParentFragment()).hideDetails(true);
         */
-      } else {
-        ((Activity) context).finish();
+        ((TransactionsFragment) getParentFragment()).hideDetails(true);
       }
     }
   }
@@ -308,7 +308,7 @@ public class TransactionDetailsFragment extends RoboFragment {
     String amountText = Utils.formatMoney(tx.getAmount().abs());
     amount.setText(amountText);
     int amountLabelResource = R.string.transactiondetails_amountsent;
-    if(tx.isRequest()) {
+    if (tx.isRequest()) {
       amountLabelResource = R.string.transactiondetails_amountrequested;
     } else if(sentToMe) {
       amountLabelResource = R.string.transactiondetails_amountreceived;
@@ -332,23 +332,29 @@ public class TransactionDetailsFragment extends RoboFragment {
     }
     date.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
 
-    /* TODO Status
-    String transactionStatus = data.optString("status", getString(R.string.transaction_status_error));
-    String readable = transactionStatus;
+    Transaction.Status transactionStatus = tx.getStatus();
     int background = R.drawable.transaction_unknown;
-    if("complete".equals(transactionStatus)) {
-      readable = getString(R.string.transaction_status_complete);
-      background = R.drawable.transaction_complete;
-    } else if("pending".equals(transactionStatus)) {
-      readable = getString(R.string.transaction_status_pending);
-      background = R.drawable.transaction_pending;
-    } else if("delayed".equals(transactionStatus)) {
-      readable = getString(R.string.transaction_status_delayed);
-      background = R.drawable.transaction_delayed;
+    String readable = getString(R.string.transaction_status_error);
+
+    switch (transactionStatus) {
+      case COMPLETE:
+        readable = getString(R.string.transaction_status_complete);
+        background = R.drawable.transaction_complete;
+        break;
+      case PENDING:
+        readable = getString(R.string.transaction_status_pending);
+        background = R.drawable.transaction_pending;
+        break;
+      /* TODO
+      case DELAYED:
+        readable = getString(R.string.transaction_status_delayed);
+        background = R.drawable.transaction_delayed;
+        break;
+      */
     }
+
     status.setText(readable);
     status.setBackgroundResource(background);
-    */
 
     // Notes
     String notesText = tx.getNotes();
@@ -378,7 +384,7 @@ public class TransactionDetailsFragment extends RoboFragment {
       });
     } */
 
-    if(!tx.isRequest() || senderOrRecipientIsExternal || tx.getConfirmations() > 0) {
+    if(!tx.isRequest() || senderOrRecipientIsExternal || tx.getStatus() != Transaction.Status.PENDING) {
       // No actions
       actions.setVisibility(View.GONE);
     } else if(sentToMe) {

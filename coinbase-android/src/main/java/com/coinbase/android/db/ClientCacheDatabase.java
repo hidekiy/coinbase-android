@@ -12,7 +12,7 @@ import com.coinbase.api.entity.Transaction;
  *
  */
 public class ClientCacheDatabase extends SQLiteOpenHelper {
-  public static final int DATABASE_VERSION = 1;
+  public static final int DATABASE_VERSION = 4;
   public static final String DATABASE_NAME = "coinbase_client_cache";
 
   public ClientCacheDatabase(Context context) {

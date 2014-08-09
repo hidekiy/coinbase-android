@@ -18,6 +18,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -165,6 +166,8 @@ public class WaitForPaymentFragment extends RoboDialogFragment {
 
   @Subscribe
   public void onNewTransaction(NewTransactionEvent newTransactionEvent) {
+    Log.d("WaitForPaymentFragment", "Got new transaction in fragment");
+
     Transaction newTransaction = newTransactionEvent.transaction;
 
     // Ignore requests

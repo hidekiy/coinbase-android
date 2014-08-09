@@ -6,7 +6,7 @@ import android.support.v4.app.FragmentTransaction;
 
 import roboguice.activity.RoboFragmentActivity;
 
-public class TestFragmentActivity<T extends Fragment> extends RoboFragmentActivity {
+public class TestFragmentActivity<T extends Fragment> extends RoboFragmentActivity implements TransactionsFragmentListener {
   protected T testFragment;
   protected Class<T> clazz;
 
@@ -27,5 +27,20 @@ public class TestFragmentActivity<T extends Fragment> extends RoboFragmentActivi
     }
     fragmentTransaction.add(R.id.empty_test_flipper, testFragment);
     fragmentTransaction.commit();
+  }
+
+  @Override
+  public void onSendMoneyClicked() {
+
+  }
+
+  @Override
+  public void onStartTransactionsSync() {
+
+  }
+
+  @Override
+  public void onFinishTransactionsSync() {
+
   }
 }
