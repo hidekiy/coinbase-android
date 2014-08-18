@@ -16,7 +16,8 @@ public class DatabaseManager {
   private ClientCacheDatabase mClientCacheDatabase;
   private SQLiteDatabase mDatabase;
 
-  public DatabaseManager (Context applicationContext) {
+  @Inject
+  public DatabaseManager (Application applicationContext) {
     mClientCacheDatabase = new ClientCacheDatabase(applicationContext);
   }
 

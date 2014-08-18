@@ -14,12 +14,10 @@ import java.util.List;
 import static com.coinbase.android.test.MockResponses.mockContacts;
 import static com.coinbase.android.test.MockResponses.mockCurrentUser;
 import static com.coinbase.android.test.MockResponses.mockExchangeRates;
-import static com.coinbase.android.test.MockResponses.mockUser;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 

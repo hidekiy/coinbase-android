@@ -1,5 +1,6 @@
 package com.coinbase.android.test;
 
+import com.coinbase.api.entity.Account;
 import com.coinbase.api.entity.AccountChange;
 import com.coinbase.api.entity.AccountChangesResponse;
 import com.coinbase.api.entity.Address;
@@ -65,6 +66,18 @@ public class MockResponses {
     user.setBuyLimit(Money.parse("USD 3000"));
     user.setSellLimit(Money.parse("USD 3000"));
     return user;
+  }
+
+  public static Account mockAccount() {
+    Account result = new Account();
+    result.setName("Test Account");
+    result.setId("TestAccountId");
+    result.setActive(true);
+    result.setPrimary(true);
+    result.setBalance(Money.parse("BTC 1"));
+    result.setNativeBalance(Money.parse("USD 600"));
+
+    return result;
   }
 
   public static User mockCurrentUser() {

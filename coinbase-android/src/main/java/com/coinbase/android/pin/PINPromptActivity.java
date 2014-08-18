@@ -17,7 +17,6 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
-import com.coinbase.android.AccountsFragment;
 import com.coinbase.android.BuildConfig;
 import com.coinbase.android.BuildType;
 import com.coinbase.android.CoinbaseActivity;
@@ -31,7 +30,7 @@ import com.coinbase.api.LoginManager;
 import com.google.inject.Inject;
 
 @RequiresAuthentication
-public class PINPromptActivity extends CoinbaseActivity implements AccountsFragment.ParentActivity {
+public class PINPromptActivity extends CoinbaseActivity {
 
   public static final String ACTION_PROMPT = "com.coinbase.android.pin.ACTION_PROMPT";
   public static final String ACTION_SET = "com.coinbase.android.pin.ACTION_SET";
@@ -44,7 +43,7 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
   protected PINManager mPinManager;
 
   @Override
-  protected void onCreate(Bundle arg0) {
+  public void onCreate(Bundle arg0) {
     super.onCreate(arg0);
 
     mIsSetMode = ACTION_SET.equals(getIntent().getAction());
@@ -67,14 +66,16 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
       @Override
       public void onClick(View v) {
 
+        /* TODO
         new AccountsFragment().show(getSupportFragmentManager(), "accounts");
+        */
       }
     });
     ((TextView) findViewById(R.id.pin_switch_accounts)).setTypeface(
             FontManager.getFont(this, "RobotoCondensed-Regular"));
     findViewById(R.id.pin_switch_accounts).setVisibility(hideSwitchAccounts ? View.GONE : View.VISIBLE);
 
-    ((TextView) findViewById(R.id.pin_account)).setText(mLoginManager.getSelectedAccountName(this));
+    ((TextView) findViewById(R.id.pin_account)).setText(mLoginManager.getSelectedAccountName());
 
     mPinNumberField = ((EditText) findViewById(R.id.pin_number));
     mPinNumberField.setOnEditorActionListener(new OnEditorActionListener() {
@@ -181,8 +182,7 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
     } else {
 
       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(PINPromptActivity.this);
-      int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-      String pin = prefs.getString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), null);
+      String pin = prefs.getString(Constants.KEY_ACCOUNT_PIN, null);
 
       if(mPinNumberField.getText().toString().equals(pin)) {
         // Correct PIN has been entered.
@@ -225,6 +225,8 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
       }
   }
 
+  /* TODO
+
   public void onAccountChosen(int account) {
 
     // Change active account
@@ -242,4 +244,6 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
     startActivity(intent);
     finish();
   }
+
+  */
 }

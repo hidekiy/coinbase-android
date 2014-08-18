@@ -93,7 +93,7 @@ public class LoginActivity extends CoinbaseActivity {
 
     @Override
     public String call() {
-      mResult = mLoginManager.addAccountOAuth(LoginActivity.this, mCode, REDIRECT_URL);
+      mResult = mLoginManager.signin(LoginActivity.this, mCode, REDIRECT_URL);
       return mResult;
     }
 

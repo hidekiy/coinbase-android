@@ -252,12 +252,13 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
   private Quote mCurrentQuote;
   private BuySellType mBuySellType;
 
-  @InjectView(R.id.buysell_total)         private TextView mTotal;
-  @InjectView(R.id.buysell_type_buy)      private TextView mTypeBuy;
-  @InjectView(R.id.buysell_type_sell)     private TextView mTypeSell;
-  @InjectView(R.id.buysell_submit)        private Button mSubmitButton;
-  @InjectView(R.id.buysell_amount)        private EditText mAmount;
-  @InjectResource(R.string.title_buysell) private String mTitle;
+  @InjectView(R.id.buysell_total)              private TextView mTotal;
+  @InjectView(R.id.buysell_type_buy)           private TextView mTypeBuy;
+  @InjectView(R.id.buysell_type_sell)          private TextView mTypeSell;
+  @InjectView(R.id.buysell_submit)             private Button mSubmitButton;
+  @InjectView(R.id.buysell_amount)             private EditText mAmount;
+  @InjectResource(R.string.title_buysell)        private String mTitle;
+  @InjectResource(R.string.buysell_type_price) private String mBuySellTypePrice;
 
   @Inject
   protected PINManager mPinManager;
@@ -345,7 +346,7 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
     // Target text
     final SpannableStringBuilder targetText = new SpannableStringBuilder(base);
     if (quote != null) {
-      String formatString = getString(R.string.buysell_type_price);
+      String formatString = mBuySellTypePrice;
       String price = Utils.formatMoney(quote.getSubtotal());
       targetText.append(' ').append(String.format(formatString, price));
       targetText.setSpan(new CustomTypefaceSpan("sans-serift", light), base.length(), base.length() + price.length() + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);

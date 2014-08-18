@@ -28,6 +28,7 @@ import android.widget.FrameLayout;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.AccountChange;
 import com.coinbase.api.entity.Contact;
+import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -62,21 +63,6 @@ import static java.lang.Math.min;
 public class Utils {
 
   private Utils() { }
-
-  public static final void showMessageDialog(FragmentManager m, String message) {
-
-    MessageDialogFragment fragment = new MessageDialogFragment();
-    Bundle args = new Bundle();
-    args.putString(MessageDialogFragment.ARG_MESSAGE, message);
-    fragment.setArguments(args);
-
-    try {
-      fragment.show(m, "Utils.showMessageDialog");
-    } catch(IllegalStateException e) {
-      // Expected if application has been destroyed
-      // Ignore
-    }
-  }
 
   public static enum CurrencyType {
     BTC(8, 2),
@@ -305,8 +291,19 @@ public class Utils {
     return new ContactsAutoCompleteAdapter(context, android.R.layout.simple_spinner_dropdown_item);
   }
 
-  public static CharSequence generateAccountChangeSummary(Context c, AccountChange change) {
+  public static CharSequence generateDelayedTransactionSummary(Context c, Transaction tx) {
+    String html;
 
+    if (tx.isRequest()) {
+      html = String.format(c.getString(R.string.transaction_summary_request_me), tx.getFrom());
+    } else {
+      html = String.format(c.getString(R.string.transaction_summary_send_me), tx.getTo());
+    }
+
+    return Html.fromHtml(html);
+  }
+
+  public static CharSequence generateAccountChangeSummary(Context c, AccountChange change) {
     AccountChange.Cache cache = change.getCache();
 
     AccountChange.Cache.Category category = cache.getCategory();
@@ -386,16 +383,9 @@ public class Utils {
     return sb.toString();
   }
 
-  public static int getActiveAccount(Context c) {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return activeAccount;
-  }
-
   public static String getPrefsString(Context c, String key, String def) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getString(String.format(key, activeAccount), def);
+    return prefs.getString(key, def);
   }
 
   public static boolean inKioskMode(Context c) {
@@ -403,40 +393,30 @@ public class Utils {
   }
 
   public static boolean getPrefsBool(Context c, String key, boolean def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getBoolean(String.format(key, activeAccount), def);
+    return prefs.getBoolean(key, def);
   }
 
   public static boolean putPrefsString(Context c, String key, String newValue) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.edit().putString(String.format(key, activeAccount), newValue).commit();
+    return prefs.edit().putString(key, newValue).commit();
   }
 
   public static int getPrefsInt(Context c, String key, int def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getInt(String.format(key, activeAccount), def);
+    return prefs.getInt(key, def);
   }
 
   public static boolean togglePrefsBool(Context c, String key, boolean def) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    boolean current = prefs.getBoolean(String.format(key, activeAccount), def);
-    prefs.edit().putBoolean(String.format(key, activeAccount), !current).commit();
+    boolean current = prefs.getBoolean(key, def);
+    prefs.edit().putBoolean(key, !current).commit();
     return !current;
   }
 
   public static boolean putPrefsBool(Context c, String key, boolean newValue) {
-
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(c);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.edit().putBoolean(String.format(key, activeAccount), newValue).commit();
+    return prefs.edit().putBoolean(key, newValue).commit();
   }
 
   @TargetApi(Build.VERSION_CODES.HONEYCOMB)

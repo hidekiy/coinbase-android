@@ -36,22 +36,21 @@ public class PINManager {
   public boolean shouldGrantAccess(Context context) {
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
 
     // Does the user have a PIN?
-    boolean hasPin = prefs.getString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), null) != null;
+    boolean hasPin = prefs.getString(Constants.KEY_ACCOUNT_PIN, null) != null;
     if(!hasPin) {
       return true;
     }
 
     // Is the PIN edit-only?
-    boolean pinViewAllowed = prefs.getBoolean(String.format(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccount), false);
+    boolean pinViewAllowed = prefs.getBoolean(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, false);
     if(pinViewAllowed) {
       return true;
     }
 
     // Is a reprompt required?
-    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(String.format(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, activeAccount), -1);
+    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, -1);
     return timeSinceReprompt < PIN_REPROMPT_TIME;
   }
 
@@ -63,23 +62,22 @@ public class PINManager {
   public boolean checkForEditAccess(Activity activity) {
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(activity);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
 
     // Does the user have a PIN?
-    boolean hasPin = prefs.getString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), null) != null;
+    boolean hasPin = prefs.getString(Constants.KEY_ACCOUNT_PIN, null) != null;
     if(!hasPin) {
       return true;
     }
 
     // Is the PIN edit-only?
-    boolean pinViewAllowed = prefs.getBoolean(String.format(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccount), false);
+    boolean pinViewAllowed = prefs.getBoolean(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, false);
     if(!pinViewAllowed) {
       // Still prompt for edits even if view is protected...
       // return true;
     }
 
     // Is a reprompt required?
-    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(String.format(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, activeAccount), -1);
+    long timeSinceReprompt = System.currentTimeMillis() - prefs.getLong(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, -1);
     boolean repromptRequired = timeSinceReprompt > PIN_REPROMPT_TIME;
 
     if(repromptRequired) {
@@ -98,9 +96,8 @@ public class PINManager {
    */
   public void resetPinClock(Context context) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     Editor e = prefs.edit();
-    e.putLong(String.format(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, activeAccount), System.currentTimeMillis());
+    e.putLong(Constants.KEY_ACCOUNT_LAST_PIN_ENTRY_TIME, System.currentTimeMillis());
     e.commit();
   }
 
@@ -109,9 +106,8 @@ public class PINManager {
    */
   public void setPin(Context context, String pin) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
     Editor e = prefs.edit();
-    e.putString(String.format(Constants.KEY_ACCOUNT_PIN, activeAccount), pin);
+    e.putString(Constants.KEY_ACCOUNT_PIN, pin);
     e.commit();
     mBus.post(new UserDataUpdatedEvent());
   }

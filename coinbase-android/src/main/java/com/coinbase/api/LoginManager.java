@@ -3,49 +3,33 @@ package com.coinbase.api;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.coinbase.api.entity.Account;
+
+import java.util.List;
+
 public interface LoginManager {
   String getClientBaseUrl();
+  List<Account> getAccounts();
+  boolean switchActiveAccount(Account account);
 
-  boolean isSignedIn(Context context);
+  boolean needToRefreshAccessToken();
 
-  String[] getAccounts(Context context);
-
-  boolean switchActiveAccount(Context context, int index);
-
-  int getAccountId(Context context, int index);
-
-  boolean switchActiveAccount(Context context, int index, SharedPreferences.Editor e);
-
-  int getSelectedAccountIndex(Context context);
-
-  String getAccessToken(Context context, int account);
-
-  boolean needToRefreshAccessToken(Context context, int account);
-
-  void refreshAccessToken(Context context, int account);
+  void refreshAccessToken();
 
   // start three legged oauth handshake
   String generateOAuthUrl(String redirectUrl);
 
-  // end three legged oauth handshake. (code to tokens)
-  // Returns error as human-readable string, or null on success.
-  String addAccountOAuth(Context context, String code, String originalRedirectUrl);
+  String signin(Context context, String code, String originalRedirectUrl);
 
-  String getSelectedAccountName(Context context);
+  String getSelectedAccountName();
 
-  void setAccountValid(Context context, int accountId, boolean status, String desc);
+  void setAccountValid(boolean status, String desc);
 
-  String getAccountValid(Context context, int accountId);
-
-  void deleteCurrentAccount(Context context);
+  String getAccountValid();
 
   // TODO remove methods that take context and use injected context
 
-  int getActiveAccount();
-
   String getActiveUserId();
-
-  Coinbase getClient(int account);
 
   Coinbase getClient();
 
@@ -54,4 +38,6 @@ public interface LoginManager {
   String getReceiveAddress();
 
   String getActiveAccountId();
+
+  void signout();
 }

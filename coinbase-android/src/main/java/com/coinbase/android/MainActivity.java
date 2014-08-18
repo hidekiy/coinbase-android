@@ -28,10 +28,10 @@ import com.actionbarsherlock.view.MenuItem;
 import com.coinbase.android.CoinbaseActivity.RequiresAuthentication;
 import com.coinbase.android.CoinbaseActivity.RequiresPIN;
 import com.coinbase.android.event.SectionSelectedEvent;
+import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.merchant.MerchantKioskHomeActivity;
 import com.coinbase.android.merchant.MerchantKioskModeService;
 import com.coinbase.android.merchant.MerchantToolsFragment;
-import com.coinbase.android.merchant.PointOfSaleFragment;
 import com.coinbase.android.pin.PINSettingDialogFragment;
 import com.coinbase.android.settings.AccountSettingsFragment;
 import com.coinbase.android.transfers.TransferFragment;
@@ -39,13 +39,15 @@ import com.coinbase.android.ui.Mintent;
 import com.coinbase.android.ui.SignOutFragment;
 import com.coinbase.android.ui.SlidingDrawerFragment;
 import com.coinbase.android.util.Section;
+import com.coinbase.api.entity.Account;
 import com.coinbase.zxing.client.android.Intents;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
 @RequiresAuthentication
 @RequiresPIN
-public class MainActivity extends CoinbaseActivity implements AccountsFragment.ParentActivity, TransactionsFragmentListener {
+public class MainActivity extends CoinbaseActivity implements TransactionsFragment.Listener, AccountsFragment.ParentActivity {
 
   public static final String ACTION_SCAN = "com.siriusapplications.coinbase.MainActivity.ACTION_SCAN";
   public static final String ACTION_TRANSFER = "com.siriusapplications.coinbase.MainActivity.ACTION_TRANSFER";
@@ -83,7 +85,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   TransferFragment mTransferFragment;
   AccountSettingsFragment mSettingsFragment;
   MerchantToolsFragment mMerchantToolsFragment;
-  PointOfSaleFragment mPointOfSaleFragment;
+  // TODO PointOfSaleFragment mPointOfSaleFragment;
   OnSharedPreferenceChangeListener mSharedPreferenceChangeListener;
   DrawerLayout mSlidingMenu;
   ActionBarDrawerToggle mDrawerToggle;
@@ -100,13 +102,16 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
+    if (isFinishing()) {
+      return;
+    }
+
     setContentView(R.layout.activity_main);
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-    int currentAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String firstLaunchKey = String.format(Constants.KEY_ACCOUNT_FIRST_LAUNCH, currentAccount);
-    boolean firstLaunch = prefs.getBoolean(firstLaunchKey, true);
-    prefs.edit().putBoolean(firstLaunchKey, false).commit();
+    boolean firstLaunch = prefs.getBoolean(Constants.KEY_ACCOUNT_FIRST_LAUNCH, true);
+    prefs.edit().putBoolean(Constants.KEY_ACCOUNT_FIRST_LAUNCH, false).commit();
 
     // Set up the ViewFlipper
     mViewFlipper = (ViewFlipper) findViewById(R.id.flipper);
@@ -212,10 +217,10 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     } else if(fragment instanceof MerchantToolsFragment) {
       mFragments[FRAGMENT_INDEX_MERCHANT_TOOLS] = (CoinbaseFragment) fragment;
       mMerchantToolsFragment = (MerchantToolsFragment) fragment;
-    } else if(fragment instanceof PointOfSaleFragment) {
+    } /* TODO else if(fragment instanceof PointOfSaleFragment) {
       mFragments[FRAGMENT_INDEX_POINT_OF_SALE] = (CoinbaseFragment) fragment;
       mPointOfSaleFragment = (PointOfSaleFragment) fragment;
-    }
+    } */
   }
 
   @Override
@@ -541,7 +546,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   public void onResume() {
     super.onResume();
 
-    // Legacy support:
+    /* TODO Legacy support:
     // If the old Point of Sale is enabled, show a dialog directing them to the Play Store
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
     int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
@@ -549,6 +554,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     if (prefs.getBoolean(key, false)) {
       new MerchantToolsMovedDialogFragment().show(getSupportFragmentManager(), "poslegacy");
     }
+    */
   }
 
   @Override
@@ -570,7 +576,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     // away from the app
     InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
     inputMethodManager.hideSoftInputFromWindow(
-      findViewById(android.R.id.content).getWindowToken(), 0);
+            findViewById(android.R.id.content).getWindowToken(), 0);
   }
 
   public void openTransferMenu(boolean isRequest) {
@@ -668,32 +674,10 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
     return super.onOptionsItemSelected(item);
   }
 
-  public void onAccountChosen(int account) {
-    changeAccount(account);
-  }
-
-  public void changeAccount(int account) {
-
-    if(account == -1) {
-
-      // Delete current account
-      mLoginManager.deleteCurrentAccount(this);
-    } else {
-
-      // Change active account
-      mLoginManager.switchActiveAccount(this, account);
-    }
-
+  public void onAccountChosen(Account account) {
+    mLoginManager.switchActiveAccount(account);
     finish();
     startActivity(new Intent(this, MainActivity.class));
-  }
-
-  public void onAddAccount() {
-
-    Intent intent = new Intent(this, LoginActivity.class);
-    intent.putExtra(LoginActivity.EXTRA_SHOW_INTRO, false);
-    startActivity(intent);
-    finish();
   }
 
   public void startBarcodeScan() {
@@ -788,7 +772,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
       mTransactionsFragment.refresh();
       mSettingsFragment.refresh();
     } else {
-      mPointOfSaleFragment.refresh();
+      // TODO mPointOfSaleFragment.refresh();
     }
   }
 
@@ -806,4 +790,23 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   public void onFinishTransactionsSync() {
     setRefreshButtonAnimated(false);
   }
+
+  @Override
+  public void onStart() {
+    super.onStart();
+    mBus.register(this);
+  }
+
+  @Override
+  public void onStop() {
+    mBus.unregister(this);
+    super.onStop();
+  }
+
+  @Subscribe
+  public void onTransferMade(TransferMadeEvent event) {
+    // TODO Animate insertion
+    switchTo(FRAGMENT_INDEX_TRANSACTIONS);
+  }
+
 }

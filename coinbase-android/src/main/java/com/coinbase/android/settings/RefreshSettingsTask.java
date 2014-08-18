@@ -28,18 +28,17 @@ class RefreshSettingsTask extends ApiTask<User> {
   @Override
   public void onSuccess(User user) {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = mLoginManager.getActiveAccount();
 
     SharedPreferences.Editor e = prefs.edit();
 
-    e.putString(String.format(Constants.KEY_ACCOUNT_NAME, activeAccount), user.getEmail());
-    e.putString(String.format(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, activeAccount), user.getNativeCurrency().getCurrencyCode());
-    e.putString(String.format(Constants.KEY_ACCOUNT_FULL_NAME, activeAccount), user.getName());
-    e.putString(String.format(Constants.KEY_ACCOUNT_TIME_ZONE, activeAccount), user.getTimeZone());
-    e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_BUY, activeAccount), user.getBuyLimit().getAmount().toString());
-    e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_SELL, activeAccount), user.getSellLimit().getAmount().toString());
-    e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_BUY, activeAccount), user.getBuyLimit().getCurrencyUnit().getCurrencyCode());
-    e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_SELL, activeAccount), user.getSellLimit().getCurrencyUnit().getCurrencyCode());
+    e.putString(Constants.KEY_ACCOUNT_NAME, user.getEmail());
+    e.putString(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, user.getNativeCurrency().getCurrencyCode());
+    e.putString(Constants.KEY_ACCOUNT_FULL_NAME, user.getName());
+    e.putString(Constants.KEY_ACCOUNT_TIME_ZONE, user.getTimeZone());
+    e.putString(Constants.KEY_ACCOUNT_LIMIT_BUY, user.getBuyLimit().getAmount().toString());
+    e.putString(Constants.KEY_ACCOUNT_LIMIT_SELL, user.getSellLimit().getAmount().toString());
+    e.putString(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_BUY, user.getBuyLimit().getCurrencyUnit().getCurrencyCode());
+    e.putString(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_SELL, user.getSellLimit().getCurrencyUnit().getCurrencyCode());
 
     e.commit();
   }

@@ -8,9 +8,15 @@ import android.support.v4.app.DialogFragment;
 
 import com.coinbase.android.MainActivity;
 import com.coinbase.android.R;
+import com.coinbase.api.LoginManager;
+import com.google.inject.Inject;
 
-public class SignOutFragment extends DialogFragment {
+import roboguice.fragment.RoboDialogFragment;
 
+public class SignOutFragment extends RoboDialogFragment {
+
+  @Inject
+  protected LoginManager mLoginManager;
 
   @Override
   public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -20,8 +26,8 @@ public class SignOutFragment extends DialogFragment {
 
     builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface dialog, int id) {
-        // Sign out
-        ((MainActivity) getActivity()).changeAccount(-1);
+        mLoginManager.signout();
+        getActivity().finish();
       }
     });
 

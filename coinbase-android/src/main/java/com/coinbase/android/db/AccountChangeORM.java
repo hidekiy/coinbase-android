@@ -56,7 +56,9 @@ public class AccountChangeORM implements BaseColumns {
     ContentValues values = new ContentValues();
     values.put(COLUMN_ACCOUNT_ID, accountId);
     if (cache != null) {
-      values.put(COLUMN_CATEGORY, cache.getCategory().toString());
+      if (cache.getCategory() != null) {
+        values.put(COLUMN_CATEGORY, cache.getCategory().toString());
+      }
       if (cache.getOtherUser() != null) {
         values.put(COLUMN_COUNTERPARTY_NAME, cache.getOtherUser().getName());
       }

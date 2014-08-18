@@ -1,9 +1,10 @@
 package com.coinbase.api;
 
+import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.net.ParseException;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -12,8 +13,14 @@ import com.coinbase.android.BuildConfig;
 import com.coinbase.android.BuildType;
 import com.coinbase.android.Constants;
 import com.coinbase.android.R;
+import com.coinbase.android.db.AccountORM;
+import com.coinbase.android.db.ClientCacheDatabase;
+import com.coinbase.android.db.DatabaseManager;
+import com.coinbase.api.entity.Account;
+import com.coinbase.api.entity.User;
 import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -31,13 +38,9 @@ import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import roboguice.inject.ContextSingleton;
-
-@ContextSingleton
+@Singleton
 public class ProductionLoginManager implements LoginManager {
 
   // production
@@ -51,7 +54,10 @@ public class ProductionLoginManager implements LoginManager {
   //public static final String CLIENT_BASEURL = "http://192.168.1.10:3001";
 
   @Inject
-  protected Context mContext;
+  protected Application mContext;
+
+  @Inject
+  protected DatabaseManager dbManager;
 
   public ProductionLoginManager() {}
 
@@ -65,141 +71,48 @@ public class ProductionLoginManager implements LoginManager {
   }
 
   @Override
-  public boolean isSignedIn(Context context) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-
-    return prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1) > -1;
+  public boolean isSignedIn() {
+    return getAccountValid() == null;
   }
 
   @Override
-  public String[] getAccounts(Context context) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int numAccounts = prefs.getInt(Constants.KEY_MAX_ACCOUNT, -1) + 1;
-
-    List<String> accounts = new ArrayList<String>();
-    for(int i = 0; i < numAccounts; i++) {
-
-      String account = prefs.getString(String.format(Constants.KEY_ACCOUNT_NAME, i), null);
-      if(account != null) {
-        accounts.add(account);
-      }
+  public List<Account> getAccounts() {
+    SQLiteDatabase db = dbManager.openDatabase();
+    try {
+      return AccountORM.list(db);
+    } finally {
+      dbManager.closeDatabase();
     }
-
-    return accounts.toArray(new String[0]);
   }
 
   @Override
-  public boolean switchActiveAccount(Context context, int index) {
-    return switchActiveAccount(context, index, null);
-  }
+  public boolean switchActiveAccount(Account account) {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+    Editor e = prefs.edit();
 
-  @Override
-  public int getAccountId(Context context, int index) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int numAccounts = prefs.getInt(Constants.KEY_MAX_ACCOUNT, -1) + 1;
-
-    int currentIndex = 0;
-    for(int i = 0; i < numAccounts; i++) {
-
-      String account = prefs.getString(String.format(Constants.KEY_ACCOUNT_NAME, i), null);
-      if(account != null) {
-
-        if(currentIndex == index) {
-
-          return i;
-        }
-
-        currentIndex++;
-      }
-    }
-
-    return -1;
-  }
-
-  @Override
-  public boolean switchActiveAccount(Context context, int index, Editor e) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int numAccounts = prefs.getInt(Constants.KEY_MAX_ACCOUNT, -1) + 1;
-
-    if(e == null) {
-      e = prefs.edit();
-    }
-
-    int currentIndex = 0;
-    for(int i = 0; i < numAccounts; i++) {
-
-      String account = prefs.getString(String.format(Constants.KEY_ACCOUNT_NAME, i), null);
-      if(account != null) {
-
-        if(currentIndex == index) {
-
-          e.putInt(Constants.KEY_ACTIVE_ACCOUNT, i);
-          e.commit();
-          Log.i("Coinbase", "Switching to account " + i);
-          return true;
-        }
-
-        currentIndex++;
-      }
-    }
-
+    e.putString(Constants.KEY_ACTIVE_ACCOUNT_ID, account.getId());
     e.commit();
 
-    return false;
+    return true;
   }
 
   @Override
-  public int getSelectedAccountIndex(Context context) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int numAccounts = prefs.getInt(Constants.KEY_MAX_ACCOUNT, -1) + 1;
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-
-    int id = 0;
-    for(int i = 0; i < numAccounts; i++) {
-
-      if(i == activeAccount) {
-        return id;
-      }
-
-      String account = prefs.getString(String.format(Constants.KEY_ACCOUNT_NAME, i), null);
-      if(account != null) {
-        id++;
-      }
-    }
-
-    return -1;
-  }
-
-  @Override
-  public String getAccessToken(Context context, int account) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    return prefs.getString(String.format(Constants.KEY_ACCOUNT_ACCESS_TOKEN, account), null);
-  }
-
-  @Override
-  public boolean needToRefreshAccessToken(Context context, int account) {
+  public boolean needToRefreshAccessToken() {
     int FIVE_MINUTES = 300000;
     synchronized (this) {
-      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-      long tokenExpiresAt = prefs.getLong(String.format(Constants.KEY_ACCOUNT_TOKEN_EXPIRES_AT, account), -1);
+      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+      long tokenExpiresAt = prefs.getLong(Constants.KEY_ACCOUNT_TOKEN_EXPIRES_AT, -1);
       return System.currentTimeMillis() >= tokenExpiresAt - FIVE_MINUTES;
     }
   }
 
   @Override
-  public void refreshAccessToken(Context context, int account) {
-
+  public void refreshAccessToken() {
     synchronized (this) {
       Log.i("Coinbase", "Refreshing access token...");
 
-      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-      String refreshToken = prefs.getString(String.format(Constants.KEY_ACCOUNT_REFRESH_TOKEN, account), null);
+      SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+      String refreshToken = prefs.getString(Constants.KEY_ACCOUNT_REFRESH_TOKEN, null);
 
       List<BasicNameValuePair> parametersBody = new ArrayList<BasicNameValuePair>();
       parametersBody.add(new BasicNameValuePair("grant_type", "refresh_token"));
@@ -208,7 +121,7 @@ public class ProductionLoginManager implements LoginManager {
       Object[] newTokens;
 
       try {
-        newTokens = doTokenRequest(context, parametersBody, account);
+        newTokens = doTokenRequest(parametersBody);
       } catch(Exception e) {
         e.printStackTrace();
         Log.e("Coinbase", "Could not fetch new access token!");
@@ -223,9 +136,9 @@ public class ProductionLoginManager implements LoginManager {
 
       Editor e = prefs.edit();
 
-      e.putString(String.format(Constants.KEY_ACCOUNT_ACCESS_TOKEN, account), (String)newTokens[0]);
-      e.putString(String.format(Constants.KEY_ACCOUNT_REFRESH_TOKEN, account), (String)newTokens[1]);
-      e.putLong(String.format(Constants.KEY_ACCOUNT_TOKEN_EXPIRES_AT, account), System.currentTimeMillis() + 7200000);
+      e.putString(Constants.KEY_ACCOUNT_ACCESS_TOKEN, (String)newTokens[0]);
+      e.putString(Constants.KEY_ACCOUNT_REFRESH_TOKEN, (String)newTokens[1]);
+      e.putLong(Constants.KEY_ACCOUNT_TOKEN_EXPIRES_AT, System.currentTimeMillis() + 7200000);
 
       e.commit();
     }
@@ -234,7 +147,6 @@ public class ProductionLoginManager implements LoginManager {
   // start three legged oauth handshake
   @Override
   public String generateOAuthUrl(String redirectUrl){
-
     String baseUrl = CLIENT_BASEURL + "/oauth/authorize";
     String device = Build.MODEL.startsWith(Build.MANUFACTURER) ? Build.MODEL : Build.MANUFACTURER + " " + Build.MODEL;
 
@@ -254,7 +166,7 @@ public class ProductionLoginManager implements LoginManager {
   // end three legged oauth handshake. (code to tokens)
   // Returns error as human-readable string, or null on success.
   @Override
-  public String addAccountOAuth(Context context, String code, String originalRedirectUrl) {
+  public String signin(Context context, String code, String originalRedirectUrl) {
 
     List<BasicNameValuePair> parametersBody = new ArrayList<BasicNameValuePair>();
     parametersBody.add(new BasicNameValuePair("grant_type", "authorization_code"));
@@ -262,7 +174,7 @@ public class ProductionLoginManager implements LoginManager {
     parametersBody.add(new BasicNameValuePair("code", code));
 
     try {
-      Object[] tokens = doTokenRequest(context, parametersBody, -1);
+      Object[] tokens = doTokenRequest(parametersBody);
 
       if(tokens == null) {
         return context.getString(R.string.login_error_auth);
@@ -271,43 +183,51 @@ public class ProductionLoginManager implements LoginManager {
       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
       Editor e = prefs.edit();
 
-      int accountId = prefs.getInt(Constants.KEY_MAX_ACCOUNT, -1) + 1;
-      e.putInt(Constants.KEY_MAX_ACCOUNT, accountId);
-      e.putInt(Constants.KEY_ACTIVE_ACCOUNT, accountId);
-
-      e.putString(String.format(Constants.KEY_ACCOUNT_ACCESS_TOKEN, accountId), (String)tokens[0]);
-      e.putString(String.format(Constants.KEY_ACCOUNT_REFRESH_TOKEN, accountId), (String)tokens[1]);
-      e.putLong(String.format(Constants.KEY_ACCOUNT_TOKEN_EXPIRES_AT, accountId), System.currentTimeMillis() + 7200000);
+      e.putString(Constants.KEY_ACCOUNT_ACCESS_TOKEN, (String)tokens[0]);
+      e.putString(Constants.KEY_ACCOUNT_REFRESH_TOKEN, (String)tokens[1]);
+      e.putLong(Constants.KEY_ACCOUNT_TOKEN_EXPIRES_AT, System.currentTimeMillis() + 7200000);
+      e.putBoolean(Constants.KEY_ACCOUNT_VALID, true);
 
       e.commit();
 
-      JSONObject userInfo = (new RpcManager()).callGet(context, "users").getJSONArray("users").getJSONObject(0).getJSONObject("user");
-      e.putString(String.format(Constants.KEY_ACCOUNT_NAME, accountId), userInfo.getString("email"));
-      e.putString(String.format(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, accountId), userInfo.getString("native_currency"));
-      e.putString(String.format(Constants.KEY_ACCOUNT_FULL_NAME, accountId), userInfo.getString("name"));
-      e.putString(String.format(Constants.KEY_ACCOUNT_TIME_ZONE, accountId), userInfo.getString("time_zone"));
-      e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_BUY, accountId), userInfo.getJSONObject("buy_limit").getString("amount"));
-      e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_SELL, accountId), userInfo.getJSONObject("sell_limit").getString("amount"));
-      e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_BUY, accountId), userInfo.getJSONObject("buy_limit").getString("currency"));
-      e.putString(String.format(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_SELL, accountId), userInfo.getJSONObject("sell_limit").getString("currency"));
+      User user = getClient().getUser();
+
+      e.putString(Constants.KEY_USER_ID, user.getId());
+      e.putString(Constants.KEY_ACCOUNT_NAME, user.getEmail());
+      e.putString(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, user.getNativeCurrency().getCurrencyCode());
+      e.putString(Constants.KEY_ACCOUNT_FULL_NAME, user.getName());
+      e.putString(Constants.KEY_ACCOUNT_TIME_ZONE, user.getTimeZone());
+      e.putString(Constants.KEY_ACCOUNT_LIMIT_BUY, user.getBuyLimit().getAmount().toPlainString());
+      e.putString(Constants.KEY_ACCOUNT_LIMIT_SELL, user.getSellLimit().getAmount().toPlainString());
+      e.putString(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_BUY, user.getBuyLimit().getCurrencyUnit().getCurrencyCode());
+      e.putString(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_SELL, user.getSellLimit().getCurrencyUnit().getCurrencyCode());
       e.commit();
+
+      List<Account> accounts = getClient().getAccounts().getAccounts();
+
+      SQLiteDatabase db = dbManager.openDatabase();
+      try {
+        for (Account account : accounts) {
+          if (account.isActive()) {
+            AccountORM.insert(db, account);
+            if (account.isPrimary()) {
+              e.putString(Constants.KEY_ACTIVE_ACCOUNT_ID, account.getId());
+              e.commit();
+            }
+          }
+        }
+      } finally {
+        dbManager.closeDatabase();
+      }
 
       return null;
-
-    } catch (IOException e) {
-      e.printStackTrace();
-      return context.getString(R.string.login_error_io);
-    } catch (ParseException e) {
-      e.printStackTrace();
-      return context.getString(R.string.login_error_io);
-    } catch (JSONException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       return context.getString(R.string.login_error_io);
     }
   }
 
-  private Object[] doTokenRequest(Context context, Collection<BasicNameValuePair> params, int account) throws IOException, JSONException {
-
+  private Object[] doTokenRequest(Collection<BasicNameValuePair> params) throws IOException, JSONException {
     DefaultHttpClient client = new DefaultHttpClient();
 
     String baseUrl = CLIENT_BASEURL + "/oauth/token";
@@ -323,11 +243,9 @@ public class ProductionLoginManager implements LoginManager {
     int code = response.getStatusLine().getStatusCode();
 
     if(code == 401) {
-
-      Log.e("Coinbase", "Authentication error getting token for account " + account);
+      Log.e("Coinbase", "Authentication error getting token");
       return null;
     } else if(code != 200) {
-
       throw new IOException("Got HTTP response code " + code);
     }
 
@@ -340,92 +258,51 @@ public class ProductionLoginManager implements LoginManager {
   }
 
   @Override
-  public String getSelectedAccountName(Context context) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getString(String.format(Constants.KEY_ACCOUNT_NAME, activeAccount), null);
+  public String getSelectedAccountName() {
+    SQLiteDatabase db = dbManager.openDatabase();
+    try {
+      Account account = AccountORM.find(db, getActiveAccountId());
+      return account.getName();
+    } finally {
+      dbManager.closeDatabase();
+    }
   }
 
   @Override
-  public void setAccountValid(Context context, int accountId, boolean status, String desc) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+  public void setAccountValid(boolean status, String desc) {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
     Editor e = prefs.edit();
-    e.putBoolean(String.format(Constants.KEY_ACCOUNT_VALID, accountId), status);
-    e.putString(String.format(Constants.KEY_ACCOUNT_VALID_DESC, accountId), desc);
+    e.putBoolean(Constants.KEY_ACCOUNT_VALID, status);
+    e.putString(Constants.KEY_ACCOUNT_VALID_DESC, desc);
     e.commit();
   }
 
   @Override
-  public String getAccountValid(Context context, int accountId) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    if (prefs.getBoolean(String.format(Constants.KEY_ACCOUNT_VALID, accountId), true)) {
+  public String getAccountValid() {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+    if (prefs.getBoolean(Constants.KEY_ACCOUNT_VALID, false)) {
       return null; // Account valid
     } else {
-      return prefs.getString(String.format(Constants.KEY_ACCOUNT_VALID_DESC, accountId), "No msg");
+      return prefs.getString(Constants.KEY_ACCOUNT_VALID_DESC, "No msg");
     }
-  }
-
-  @Override
-  public void deleteCurrentAccount(Context context) {
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-    Editor e = prefs.edit();
-
-    int accountId = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-
-    Set<String> toRemove = new HashSet<String>();
-    for(String key : prefs.getAll().keySet()) {
-      if(key.startsWith("account_" + accountId)) {
-        toRemove.add(key);
-      }
-    }
-
-    for(String key : toRemove) {
-      e.remove(key);
-    }
-
-    e.commit();
-
-    // If there are any other accounts, switch to them
-    // Otherwise log out completely
-    boolean success = switchActiveAccount(context, 0, e);
-
-    if(!success) {
-      e.putInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-      Log.i("Coinbase", "Logged out of all accounts; active account is -1");
-    }
-
-    e.commit();
-  }
-
-  @Override
-  public int getActiveAccount() {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-    return prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
   }
 
   @Override
   public String getActiveUserId() {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-    return prefs.getString(String.format(Constants.KEY_ACCOUNT_ID, getActiveAccount()), null);
+    return prefs.getString(Constants.KEY_USER_ID, null);
   }
 
   @Override
-  public Coinbase getClient(final int account) {
-    if (needToRefreshAccessToken(mContext, account)) {
-      refreshAccessToken(mContext, account);
-    }
-
+  public Coinbase getClient() {
     return new CoinbaseBuilder()
-                .withAccessToken(getAccessToken(mContext, account))
+                .withAccessToken(getAccessToken())
+                .withAccountId(getActiveAccountId())
                 .withErrorHandler(new ErrorHandler() {
                   @Override
                   public void handleIOException(IOException ex, HttpURLConnection conn) throws IOException, CoinbaseException {
                     if (HttpURLConnection.HTTP_UNAUTHORIZED == conn.getResponseCode()) {
-                      ProductionLoginManager.this.setAccountValid(mContext, account, false, "401 error");
+                      ProductionLoginManager.this.setAccountValid(false, "401 error");
                       throw new IOException("Account is no longer valid");
                     }
                     super.handleIOException(ex, conn);
@@ -435,24 +312,34 @@ public class ProductionLoginManager implements LoginManager {
   }
 
   @Override
-  public Coinbase getClient() {
-    return getClient(getActiveAccount());
-  }
-
-  @Override
-  public boolean isSignedIn() {
-    return isSignedIn(mContext);
-  }
-
-  @Override
   public String getReceiveAddress() {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    return prefs.getString(String.format(Constants.KEY_ACCOUNT_RECEIVE_ADDRESS, activeAccount), null);
+    SQLiteDatabase db = dbManager.openDatabase();
+    try {
+      return AccountORM.getCachedReceiveAddress(db, getActiveAccountId());
+    } finally {
+      dbManager.closeDatabase();
+    }
   }
 
   @Override
   public String getActiveAccountId() {
-    return "testAccountId"; // TODO
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+    return prefs.getString(Constants.KEY_ACTIVE_ACCOUNT_ID, null);
+  }
+
+  private String getAccessToken() {
+    if (needToRefreshAccessToken()) {
+      refreshAccessToken();
+    }
+
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+    return prefs.getString(Constants.KEY_ACCOUNT_ACCESS_TOKEN, null);
+  }
+
+  @Override
+  public void signout() {
+    mContext.deleteDatabase(ClientCacheDatabase.DATABASE_NAME);
+    SharedPreferences defaultPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+    defaultPreferences.edit().clear().commit();
   }
 }

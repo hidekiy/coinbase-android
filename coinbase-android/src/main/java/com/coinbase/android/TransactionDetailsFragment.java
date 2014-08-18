@@ -14,6 +14,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.coinbase.android.db.DatabaseManager;
+import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.android.task.FetchTransactionTask;
@@ -227,7 +228,7 @@ public class TransactionDetailsFragment extends RoboFragment {
       }
 
       mContainer.setVisibility(View.VISIBLE);
-      fillViewsForTransaction(transaction);
+      fillViewsForTransaction(transaction, false);
     }
 
     @Override
@@ -290,15 +291,15 @@ public class TransactionDetailsFragment extends RoboFragment {
       }
 
       if (transaction != null) {
-        fillViewsForTransaction(transaction);
+        // TODO include delayed as argument to fragment
+        fillViewsForTransaction(transaction, false);
       } else {
         new LoadTransactionTask(transactionId).execute();
       }
     }
   }
 
-  private void fillViewsForTransaction(final Transaction tx) {
-
+  private void fillViewsForTransaction(final Transaction tx, boolean delayed) {
     // Get user ID
     String currentUserId = mLoginManager.getActiveUserId();
 
@@ -336,21 +337,20 @@ public class TransactionDetailsFragment extends RoboFragment {
     int background = R.drawable.transaction_unknown;
     String readable = getString(R.string.transaction_status_error);
 
-    switch (transactionStatus) {
-      case COMPLETE:
-        readable = getString(R.string.transaction_status_complete);
-        background = R.drawable.transaction_complete;
-        break;
-      case PENDING:
-        readable = getString(R.string.transaction_status_pending);
-        background = R.drawable.transaction_pending;
-        break;
-      /* TODO
-      case DELAYED:
-        readable = getString(R.string.transaction_status_delayed);
-        background = R.drawable.transaction_delayed;
-        break;
-      */
+    if (delayed) {
+      readable = getString(R.string.transaction_status_delayed);
+      background = R.drawable.transaction_delayed;
+    } else {
+      switch (transactionStatus) {
+        case COMPLETE:
+          readable = getString(R.string.transaction_status_complete);
+          background = R.drawable.transaction_complete;
+          break;
+        case PENDING:
+          readable = getString(R.string.transaction_status_pending);
+          background = R.drawable.transaction_pending;
+          break;
+      }
     }
 
     status.setText(readable);
@@ -370,8 +370,7 @@ public class TransactionDetailsFragment extends RoboFragment {
     negative.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
     positive.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
 
-    /* TODO
-    if("delayed".equals(transactionStatus)) {
+    if (delayed) {
       // Transaction has not actually been sent - show cancel button
 
       positive.setText(R.string.transactiondetails_delayed_cancel);
@@ -379,10 +378,10 @@ public class TransactionDetailsFragment extends RoboFragment {
       positive.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-          cancelDelayedTransaction(transactionId);
+          cancelDelayedTransaction(tx);
         }
       });
-    } */
+    }
 
     if(!tx.isRequest() || senderOrRecipientIsExternal || tx.getStatus() != Transaction.Status.PENDING) {
       // No actions
@@ -481,18 +480,16 @@ public class TransactionDetailsFragment extends RoboFragment {
     }
   }
 
-  /* TODO
-  private void cancelDelayedTransaction(String transactionId) {
-
-    // Delete transaction from database and update transactions list
-    DatabaseObject db = DatabaseObject.getInstance();
-    Context c = getActivity();
-    synchronized(db.databaseLock) {
-      db.delete(c, TransactionEntry.TABLE_NAME, TransactionEntry._ID + " = ?", new String[] { transactionId });
+  private void cancelDelayedTransaction(Transaction tx) {
+    SQLiteDatabase db = mDbManager.openDatabase();
+    try {
+      DelayedTransactionORM.delete(db, tx);
+    } finally {
+      mDbManager.closeDatabase();
     }
 
     // Show toast
-    Toast.makeText(c, R.string.transactiondetails_delayed_canceled, Toast.LENGTH_SHORT).show();
+    Toast.makeText(getActivity(), R.string.transactiondetails_delayed_canceled, Toast.LENGTH_SHORT).show();
 
     // Return to transactions list
     if (getActivity() instanceof MainActivity) {
@@ -503,5 +500,4 @@ public class TransactionDetailsFragment extends RoboFragment {
       getActivity().finish();
     }
   }
-  */
 }

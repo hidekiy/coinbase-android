@@ -112,26 +112,22 @@ public class BalanceTouchListener implements View.OnTouchListener {
 
             @Override
             public void onAnimationStart(Animator arg0) {
-              // TODO Auto-generated method stub
-
+              // Nothing
             }
 
             @Override
             public void onAnimationRepeat(Animator arg0) {
-              // TODO Auto-generated method stub
-
+              // Nothing
             }
 
             @Override
             public void onAnimationEnd(Animator arg0) {
               performDismiss();
-
             }
 
             @Override
             public void onAnimationCancel(Animator arg0) {
-              // TODO Auto-generated method stub
-
+              // Nothing
             }
           });
         } else {

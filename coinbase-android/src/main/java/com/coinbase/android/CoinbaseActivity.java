@@ -4,6 +4,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 import android.content.Intent;
+import android.os.Bundle;
 
 import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.coinbase.android.pin.PINManager;
@@ -29,28 +30,31 @@ public class CoinbaseActivity extends RoboSherlockFragmentActivity {
   protected PINManager mPinManager;
 
   @Override
-  public void onResume() {
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    if(getClass().isAnnotationPresent(RequiresAuthentication.class)) {
+      // Check authentication status
+      if(!mLoginManager.isSignedIn()) {
+        // Not signed in - open login activity.
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+      }
+    }
+  }
 
-    super.onResume();
+  @Override
+  public void onResume() {
 
     if(getClass().isAnnotationPresent(RequiresAuthentication.class)) {
       // Check authentication status
-      if(!mLoginManager.isSignedIn(this)) {
-
-        // Not signed in.
-        // First check if there are any accounts available to sign in to:
-        boolean success = mLoginManager.switchActiveAccount(this, 0);
-
-        if(!success) {
-          // Not signed in - open login activity.
-          Intent intent = new Intent(this, LoginActivity.class);
-          intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-          startActivity(intent);
-
-          finish();
-        } else {
-          // Now signed in, continue with Activity initialization
-        }
+      if(!mLoginManager.isSignedIn()) {
+        // Not signed in - open login activity.
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
       }
     }
 
@@ -69,5 +73,7 @@ public class CoinbaseActivity extends RoboSherlockFragmentActivity {
         }
       }
     }
+
+    super.onResume();
   }
 }

@@ -40,10 +40,9 @@ public class UpdateUserTask extends ApiTask<Void> {
   public Void call() throws Exception {
     getClient().updateUser(mLoginManager.getActiveUserId(), mUser);
 
-    int activeAccount = mLoginManager.getActiveAccount();
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
     SharedPreferences.Editor e = prefs.edit();
-    e.putString(String.format(mPrefsKey, activeAccount), mPrefsValue);
+    e.putString(mPrefsKey, mPrefsValue);
     e.commit();
 
     return null;

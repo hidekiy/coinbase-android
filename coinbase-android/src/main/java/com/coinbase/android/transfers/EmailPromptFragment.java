@@ -5,6 +5,8 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
 import android.view.View;
 import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
@@ -12,6 +14,7 @@ import android.widget.TextView;
 import com.coinbase.android.PlatformUtils;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;
+import com.coinbase.api.entity.Transaction;
 
 import org.joda.money.Money;
 
@@ -70,16 +73,24 @@ public class EmailPromptFragment extends RoboDialogFragment {
     builder.setView(view);
     builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
       public void onClick(DialogInterface dialog, int id) {
-        /* TODO delayed transaction
         if(!Utils.isConnectedOrConnecting(getActivity())) {
           // Internet is not available
           // Show error message and display option to do a delayed transaction
-          new DelayedTransactionDialogFragment(
-                  new DelayedRequestTransaction(field.getText().toString(), mAmount, mNotes))
-                  .show(getFragmentManager(), "delayed_request");
+          Transaction transaction = new Transaction();
+          transaction.setNotes(mNotes);
+          transaction.setAmount(mAmount);
+          transaction.setFrom(field.getText().toString());
+          transaction.setRequest(true);
+
+          Bundle args = new Bundle();
+          args.putSerializable(DelayedTransactionDialogFragment.TRANSACTION, transaction);
+
+          DialogFragment f = new DelayedTransactionDialogFragment();
+          f.setArguments(args);
+          f.show(getFragmentManager(), "delayed_request");
+
           return;
         }
-        */
         AutoCompleteTextView field = (AutoCompleteTextView) ((AlertDialog) dialog).findViewById(R.id.transfer_email_prompt_field);
         new RequestMoneyTask(getActivity(), field.getText().toString(), mAmount, mNotes).execute();
       }

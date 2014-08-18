@@ -6,7 +6,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.provider.BaseColumns;
 
 import com.coinbase.api.entity.Transaction;
-import com.coinbase.api.entity.User;
 
 import org.joda.money.CurrencyUnit;
 import org.joda.money.Money;
@@ -16,23 +15,16 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TransactionORM implements BaseColumns {
+public class DelayedTransactionORM implements BaseColumns {
 
-  private static final String TABLE_NAME = "Transactions";
+  private static final String TABLE_NAME = "DelayedTransactions";
 
   public static final String COLUMN_ACCOUNT_ID = "account_id";
-  public static final String COLUMN_TRANSACTION_ID = "transaction_id";
   public static final String COLUMN_AMOUNT_STRING = "amount";
   public static final String COLUMN_AMOUNT_CURRENCY = "amount_currency";
-  public static final String COLUMN_SENDER_ID = "sender_id";
-  public static final String COLUMN_SENDER_NAME = "sender_name";
-  public static final String COLUMN_SENDER_EMAIL = "sender_email";
-  public static final String COLUMN_RECIPIENT_ID = "recipient_id";
-  public static final String COLUMN_RECIPIENT_NAME = "recipient_name";
-  public static final String COLUMN_RECIPIENT_EMAIL = "recipient_email";
+  public static final String COLUMN_FROM = "tx_from";
+  public static final String COLUMN_TO = "tx_to";
   public static final String COLUMN_IS_REQUEST = "is_request";
-  public static final String COLUMN_CONFIRMATIONS = "confirmations";
-  public static final String COLUMN_STATUS = "status";
   public static final String COLUMN_NOTES = "notes";
   public static final String COLUMN_CREATED_AT = "created_at";
 
@@ -45,30 +37,22 @@ public class TransactionORM implements BaseColumns {
           "CREATE TABLE " + TABLE_NAME + " (" +
                   _ID                      + INTEGER_TYPE + " PRIMARY KEY AUTOINCREMENT NOT NULL" + COMMA_SEP +
                   COLUMN_ACCOUNT_ID        + TEXT_TYPE    + COMMA_SEP +
-                  COLUMN_TRANSACTION_ID    + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_AMOUNT_STRING     + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_AMOUNT_CURRENCY   + TEXT_TYPE    + COMMA_SEP +
-                  COLUMN_SENDER_ID         + TEXT_TYPE    + COMMA_SEP +
-                  COLUMN_SENDER_NAME       + TEXT_TYPE    + COMMA_SEP +
-                  COLUMN_SENDER_EMAIL      + TEXT_TYPE    + COMMA_SEP +
-                  COLUMN_RECIPIENT_ID      + TEXT_TYPE    + COMMA_SEP +
-                  COLUMN_RECIPIENT_NAME    + TEXT_TYPE    + COMMA_SEP +
-                  COLUMN_RECIPIENT_EMAIL   + TEXT_TYPE    + COMMA_SEP +
+                  COLUMN_FROM              + TEXT_TYPE    + COMMA_SEP +
+                  COLUMN_TO                + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_IS_REQUEST        + INTEGER_TYPE + COMMA_SEP +
-                  COLUMN_CONFIRMATIONS     + INTEGER_TYPE + COMMA_SEP +
-                  COLUMN_STATUS            + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_NOTES             + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_CREATED_AT        + INTEGER_TYPE +
-          ")";
+                  ")";
 
   public static final String SQL_DROP_TABLE =
           "DROP TABLE IF EXISTS " + TABLE_NAME;
 
-  public static ContentValues toContentValues(String accountId, Transaction tx, boolean delayed) {
+  public static ContentValues toContentValues(String accountId, Transaction tx) {
     ContentValues values = new ContentValues();
 
     values.put(COLUMN_ACCOUNT_ID, accountId);
-    values.put(COLUMN_TRANSACTION_ID, tx.getId());
     Money amount = tx.getAmount();
     if (amount != null) {
       values.put(COLUMN_AMOUNT_STRING, amount.getAmount().toPlainString());
@@ -76,20 +60,14 @@ public class TransactionORM implements BaseColumns {
     }
     values.put(COLUMN_NOTES, tx.getNotes());
     values.put(COLUMN_CREATED_AT, tx.getCreatedAt().getMillis());
-    if (tx.getRecipient() != null) {
-      values.put(COLUMN_RECIPIENT_ID, tx.getRecipient().getId());
-      values.put(COLUMN_RECIPIENT_EMAIL, tx.getRecipient().getEmail());
-      values.put(COLUMN_RECIPIENT_NAME, tx.getRecipient().getName());
+    if (tx.getTo() != null) {
+      values.put(COLUMN_TO, tx.getTo());
     }
-    if (tx.getSender() != null) {
-      values.put(COLUMN_SENDER_ID, tx.getSender().getId());
-      values.put(COLUMN_SENDER_EMAIL, tx.getSender().getEmail());
-      values.put(COLUMN_SENDER_NAME, tx.getSender().getName());
+    if (tx.getFrom() != null) {
+      values.put(COLUMN_FROM, tx.getFrom());
     }
 
     values.put(COLUMN_IS_REQUEST, tx.isRequest() ? 1 : 0);
-    values.put(COLUMN_CONFIRMATIONS, tx.getConfirmations());
-    values.put(COLUMN_STATUS, tx.getStatus().toString());
 
     return values;
   }
@@ -97,19 +75,9 @@ public class TransactionORM implements BaseColumns {
   public static Transaction fromCursor(Cursor c) {
     Transaction result = new Transaction();
 
-    result.setId(c.getString(c.getColumnIndex(COLUMN_TRANSACTION_ID)));
-
-    User recipient = new User();
-    recipient.setId(c.getString(c.getColumnIndex(COLUMN_RECIPIENT_ID)));
-    recipient.setName(c.getString(c.getColumnIndex(COLUMN_RECIPIENT_NAME)));
-    recipient.setEmail(c.getString(c.getColumnIndex(COLUMN_RECIPIENT_EMAIL)));
-    result.setRecipient(recipient);
-
-    User sender    = new User();
-    sender.setId(c.getString(c.getColumnIndex(COLUMN_SENDER_ID)));
-    sender.setName(c.getString(c.getColumnIndex(COLUMN_SENDER_NAME)));
-    sender.setEmail(c.getString(c.getColumnIndex(COLUMN_SENDER_EMAIL)));
-    result.setSender(sender);
+    result.setId(c.getString(c.getColumnIndex(_ID)));
+    result.setFrom(c.getString(c.getColumnIndex(COLUMN_FROM)));
+    result.setTo(c.getString(c.getColumnIndex(COLUMN_TO)));
 
     result.setCreatedAt(new DateTime(c.getLong(c.getColumnIndex(COLUMN_CREATED_AT))));
 
@@ -124,24 +92,22 @@ public class TransactionORM implements BaseColumns {
 
     result.setRequest(c.getInt(c.getColumnIndex(COLUMN_IS_REQUEST)) != 0);
 
-    result.setConfirmations(c.getInt(c.getColumnIndex(COLUMN_CONFIRMATIONS)));
-
-    result.setStatus(Transaction.Status.create(c.getString(c.getColumnIndex(COLUMN_STATUS))));
-
     return result;
   }
 
-  public static void insertOrUpdate(SQLiteDatabase db, String accountId, Transaction tx) {
-    db.delete(
-            TABLE_NAME,
-            COLUMN_TRANSACTION_ID + " = ?",
-            new String[] { tx.getId() }
-    );
-
+  public static void insert(SQLiteDatabase db, String accountId, Transaction tx) {
     db.insert(
             TABLE_NAME,
             _ID,
-            toContentValues(accountId, tx, false)
+            toContentValues(accountId, tx)
+    );
+  }
+
+  public static void delete(SQLiteDatabase db, Transaction tx) {
+    db.delete(
+            TABLE_NAME,
+            _ID + " = ?",
+            new String[]{ tx.getId() }
     );
   }
 
@@ -149,7 +115,7 @@ public class TransactionORM implements BaseColumns {
     Cursor c = db.query(
             TABLE_NAME,
             null,
-            COLUMN_TRANSACTION_ID + " = ?",
+            _ID + " = ?",
             new String[] { id },
             null,
             null,
@@ -161,5 +127,26 @@ public class TransactionORM implements BaseColumns {
     } else {
       return null;
     }
+  }
+
+  public static List<Transaction> getTransactions(SQLiteDatabase db, String accountId) {
+    Cursor c = db.query(
+            TABLE_NAME,
+            null,
+            COLUMN_ACCOUNT_ID + " = ?",
+            new String[] { accountId },
+            null,
+            null,
+            COLUMN_CREATED_AT + " DESC"
+    );
+
+    ArrayList<Transaction> result = new ArrayList<Transaction>();
+    c.moveToFirst();
+    while (!c.isAfterLast()) {
+      result.add(fromCursor(c));
+      c.moveToNext();
+    }
+
+    return result;
   }
 }

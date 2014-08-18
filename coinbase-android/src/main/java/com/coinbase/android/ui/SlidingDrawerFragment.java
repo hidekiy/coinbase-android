@@ -18,7 +18,6 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.coinbase.android.AccountsFragment;
 import com.coinbase.android.BuildConfig;
 import com.coinbase.android.BuildType;
 import com.coinbase.android.Constants;
@@ -28,6 +27,8 @@ import com.coinbase.android.R;
 import com.coinbase.android.Utils;
 import com.coinbase.android.event.SectionSelectedEvent;
 import com.coinbase.android.event.UserDataUpdatedEvent;
+import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.Account;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
@@ -162,6 +163,7 @@ public class SlidingDrawerFragment extends RoboFragment {
   View mProfileView;
   SectionsListAdapter mAdapter;
   @Inject protected Bus mBus;
+  @Inject protected LoginManager mLoginManager;
 
   private void createProfileView() {
     mProfileView = View.inflate(getActivity(), R.layout.activity_main_drawer_profile, null);
@@ -173,14 +175,12 @@ public class SlidingDrawerFragment extends RoboFragment {
   }
 
   public void refreshProfileView() {
-
     TextView name = (TextView) mProfileView.findViewById(R.id.drawer_profile_name);
     TextView email = (TextView) mProfileView.findViewById(R.id.drawer_profile_account);
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String emailText = prefs.getString(String.format(Constants.KEY_ACCOUNT_NAME, activeAccount), "");
-    name.setText(prefs.getString(String.format(Constants.KEY_ACCOUNT_FULL_NAME, activeAccount), null));
+    String emailText = prefs.getString(Constants.KEY_ACCOUNT_NAME, "");
+    name.setText(prefs.getString(Constants.KEY_ACCOUNT_FULL_NAME, null));
 
     boolean emailChanged = !emailText.equals(email.getText().toString());
     if (emailChanged) {
@@ -203,7 +203,9 @@ public class SlidingDrawerFragment extends RoboFragment {
 
         if(arg2 == 0) {
           // Switch account
+          /* TODO
           new AccountsFragment().show(getFragmentManager(), "accounts");
+          */
           return;
         }
 

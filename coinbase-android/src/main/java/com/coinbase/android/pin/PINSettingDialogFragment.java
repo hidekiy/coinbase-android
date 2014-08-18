@@ -46,9 +46,8 @@ public class PINSettingDialogFragment extends RoboDialogFragment {
     }
 
     final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-    final int activeAccount = mLoginManager.getActiveAccount();
-    final String pinKey = String.format(Constants.KEY_ACCOUNT_PIN, activeAccount);
-    final String viewAllowedKey = String.format(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccount);
+    final String pinKey = Constants.KEY_ACCOUNT_PIN;
+    final String viewAllowedKey = Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED;
 
     // Update currently selected option
     if(prefs.getString(pinKey, null) == null) {

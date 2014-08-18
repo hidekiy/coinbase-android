@@ -6,7 +6,7 @@ import android.support.v4.app.FragmentTransaction;
 
 import roboguice.activity.RoboFragmentActivity;
 
-public class TestFragmentActivity<T extends Fragment> extends RoboFragmentActivity implements TransactionsFragmentListener {
+public class TestFragmentActivity<T extends Fragment> extends RoboFragmentActivity implements TransactionsFragment.Listener {
   protected T testFragment;
   protected Class<T> clazz;
 

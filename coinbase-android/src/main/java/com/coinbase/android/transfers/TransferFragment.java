@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.DialogFragment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -27,6 +28,7 @@ import android.widget.Toast;
 import com.coinbase.android.CoinbaseFragment;
 import com.coinbase.android.Constants;
 import com.coinbase.android.FontManager;
+import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.task.GenerateReceiveAddressTask;
 import com.coinbase.android.PlatformUtils;
 import com.coinbase.android.R;
@@ -36,6 +38,8 @@ import com.coinbase.android.util.BitcoinUri;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
+import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
 import org.joda.money.BigMoney;
 import org.joda.money.BigMoneyProvider;
@@ -54,6 +58,7 @@ import roboguice.inject.InjectView;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.Math.round;
 
 public class TransferFragment extends RoboFragment implements CoinbaseFragment {
   public enum TransferType {
@@ -138,6 +143,9 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
 
   @Inject
   protected LoginManager mLoginManager;
+
+  @Inject
+  protected Bus mBus;
 
   @Override
   public void onAttach(Activity activity) {
@@ -290,17 +298,24 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     }
     mLastPressedButton = null;
 
-    // TODO delayed
-    /*
     if(!Utils.isConnectedOrConnecting(mParent)) {
       // Internet is not available
       // Show error message and display option to do a delayed transaction
-      new DelayedTransactionDialogFragment(
-              new DelayedSendTransaction(recipient, roundedAmount, null, getEnteredNotes()))
-              .show(getFragmentManager(), "delayed_send");
+      Transaction transaction = new Transaction();
+      transaction.setNotes(getEnteredNotes());
+      transaction.setAmount(roundedAmount);
+      transaction.setTo(getEnteredRecipient());
+      transaction.setRequest(false);
+
+      Bundle args = new Bundle();
+      args.putSerializable(DelayedTransactionDialogFragment.TRANSACTION, transaction);
+
+      DialogFragment f = new DelayedTransactionDialogFragment();
+      f.setArguments(args);
+      f.show(getFragmentManager(), "delayed_request");
+
       return;
     }
-    */
 
     ConfirmSendTransferFragment dialog = ConfirmSendTransferFragment.newInstance(recipient, roundedAmount, null, getEnteredNotes());
     dialog.show(getFragmentManager(), "confirm");
@@ -395,8 +410,7 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
 
   private void doNativeCurrencyUpdate() {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String nativeCurrencyCode = prefs.getString(String.format(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, activeAccount),
+    String nativeCurrencyCode = prefs.getString(Constants.KEY_ACCOUNT_NATIVE_CURRENCY,
         "USD").toUpperCase();
 
     BigMoney enteredAmount = getEnteredAmount();
@@ -470,19 +484,6 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     return amount.toMoney(RoundingMode.HALF_EVEN);
   }
 
-  private String generateRequestUri() {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String receiveAddress = prefs.getString(String.format(Constants.KEY_ACCOUNT_RECEIVE_ADDRESS, activeAccount), null);
-
-    BitcoinUri result = new BitcoinUri();
-    result.setAmount(getEnteredAmountBtc().getAmount());
-    result.setMessage(getEnteredNotes());
-    result.setAddress(receiveAddress);
-
-    return result.toString();
-  }
-
   private void initializeTypeSpinner() {
     ArrayAdapter<TransferType> arrayAdapter = new ArrayAdapter<TransferType>(
         mParent, R.layout.fragment_transfer_type, Arrays.asList(TransferType.values())) {
@@ -509,8 +510,7 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
 
   private void initializeCurrencySpinner() {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParent);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String nativeCurrency = prefs.getString(String.format(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, activeAccount),
+    String nativeCurrency = prefs.getString(Constants.KEY_ACCOUNT_NATIVE_CURRENCY,
         "usd").toUpperCase(Locale.CANADA);
 
     mCurrenciesArray = new String[] {
@@ -655,5 +655,22 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
   @Override
   public String getTitle() {
     return mTitle;
+  }
+
+  @Override
+  public void onStart() {
+    super.onStart();
+    mBus.register(this);
+  }
+
+  @Override
+  public void onStop() {
+    mBus.unregister(this);
+    super.onStop();
+  }
+
+  @Subscribe
+  public void onTransferMade(TransferMadeEvent event) {
+    clearForm();
   }
 }

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -17,6 +18,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.coinbase.android.db.AccountORM;
+import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.CoinbaseFragment;
 import com.coinbase.android.Constants;
@@ -67,7 +70,7 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
     }
     protected String getCachedValue(String preferenceKey, String def) {
       return mPrefs.getString(
-              String.format(preferenceKey, mLoginManager.getActiveAccount()),
+              preferenceKey,
               def
       );
     }
@@ -262,6 +265,9 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
     @InjectResource(R.string.account_receive_address)
     protected String mName;
 
+    @Inject
+    protected DatabaseManager mDbManager;
+
     @Override
     public String getDisplayName() {
       return mName;
@@ -269,7 +275,12 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
 
     @Override
     public String getDisplayValue() {
-      return getCachedValue(Constants.KEY_ACCOUNT_RECEIVE_ADDRESS);
+      SQLiteDatabase db = mDbManager.openDatabase();
+      try {
+        return AccountORM.getCachedReceiveAddress(db, mLoginManager.getActiveAccountId());
+      } finally {
+        mDbManager.closeDatabase();
+      }
     }
 
     @Override
@@ -316,9 +327,8 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
 
     @Override
     public String getDisplayValue() {
-      int activeAccount = mLoginManager.getActiveAccount();
       boolean enabled = getCachedValue(Constants.KEY_ACCOUNT_PIN) != null;
-      boolean editOnly = mPrefs.getBoolean(String.format(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccount), false);
+      boolean editOnly = mPrefs.getBoolean(Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED, false);
 
       return enabled ? (editOnly ? mPinEdit : mPinAll) : mPinNone;
     }
@@ -429,11 +439,8 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
   }
 
   @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-
-    mBus.register(this);
-
+  public void onActivityCreated(Bundle savedInstanceState) {
+    super.onActivityCreated(savedInstanceState);
     PreferenceListItem[] preferenceListItems = new PreferenceListItem[] {
             new NameItem(),
             new EmailItem(),
@@ -445,12 +452,18 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
             new PinItem()
     };
     setListAdapter(new PreferenceListAdapter(preferenceListItems));
+  }
+
+  @Override
+  public void onStart() {
+    super.onStart();
+    mBus.register(this);
     refresh();
   }
 
   @Override
-  public void onDestroy() {
+  public void onStop() {
     mBus.unregister(this);
-    super.onDestroy();
+    super.onStop();
   }
 }

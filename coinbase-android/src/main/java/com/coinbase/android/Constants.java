@@ -9,9 +9,9 @@ public class Constants {
     SHOULD_SHOW_NOTICE,
     NOTICE_DISMISSED;
   }
-  
-  public static final String KEY_ACTIVE_ACCOUNT = "active_account";
-  public static final String KEY_MAX_ACCOUNT = "max_account";
+
+  public static final String KEY_USER_ID = "user_id";
+  public static final String KEY_ACTIVE_ACCOUNT_ID = "active_account_id";
   public static final String KEY_KIOSK_MODE = "kiosk_mode";
   
   public static final String KEY_WIDGET_ACCOUNT = "widget_%d_account";

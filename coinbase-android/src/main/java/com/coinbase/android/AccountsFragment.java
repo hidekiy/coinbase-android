@@ -1,28 +1,29 @@
 package com.coinbase.android;
 
-import com.coinbase.android.R;
-import com.coinbase.api.LoginManager;
-import com.google.inject.Inject;
-
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.support.v4.app.DialogFragment;
+
+import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.Account;
+import com.google.inject.Inject;
+
+import java.util.List;
 
 import roboguice.fragment.RoboDialogFragment;
 
 public class AccountsFragment extends RoboDialogFragment {
 
   public static interface ParentActivity {
-    public void onAccountChosen(int index);
-    public void onAddAccount();
+    public void onAccountChosen(Account account);
   }
 
-  boolean widgetMode = false;
-  int selected = -1;
   @Inject
-  LoginManager mLoginManager;
+  protected LoginManager mLoginManager;
+
+  boolean widgetMode = false;
+  int selectedIndex = -1;
 
   @Override
   public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -32,50 +33,40 @@ public class AccountsFragment extends RoboDialogFragment {
 
     widgetMode = getArguments() == null ? false : getArguments().getBoolean("widgetMode");
 
-    final String[] accounts = mLoginManager.getAccounts(getActivity());
-    selected = mLoginManager.getSelectedAccountIndex(getActivity());
+    final List<Account> accounts = mLoginManager.getAccounts();
+    final String activeAccountId  = mLoginManager.getActiveAccountId();
 
-    String[] items = new String[accounts.length + 1];
-    System.arraycopy(accounts, 0, items, 0, accounts.length);
-    items[accounts.length] = getActivity().getString(R.string.accounts_new);
+    final String[] accountNames = new String[accounts.size()];
 
-    builder.setSingleChoiceItems(items, 
-        selected, new DialogInterface.OnClickListener() {
-
-      public void onClick(DialogInterface dialog, int which) {
-
-        if(which == accounts.length) {
-          // New account
-          if(widgetMode) {
-            ParentActivity activity = (ParentActivity) getActivity();
-            activity.onAddAccount();
-          } else {
-            ParentActivity activity = (ParentActivity) getActivity();
-            activity.onAddAccount();
-            dialog.dismiss();
-          }
-          return;
-        }
-
-        selected = which;
+    for (int i = 0; i < accounts.size(); ++i) {
+      if (activeAccountId == accounts.get(i).getId()) {
+        selectedIndex = i;
       }
-    })
-    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-      public void onClick(DialogInterface dialog, int id) {
+      accountNames[i] = accounts.get(i).getName();
+    }
 
-        // Select account
-        ParentActivity activity = (ParentActivity) getActivity();
-        activity.onAccountChosen(selected);
-      }
-    })
-    .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-      public void onClick(DialogInterface dialog, int id) {
-        // User cancelled the dialog
-        if(widgetMode) {
-          getActivity().finish();
-        }
-      }
-    });
+    builder.setSingleChoiceItems(accountNames,
+            selectedIndex, new DialogInterface.OnClickListener() {
+
+              public void onClick(DialogInterface dialog, int which) {
+                selectedIndex = which;
+              }
+            })
+            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int id) {
+                // Select account
+                ParentActivity activity = (ParentActivity) getActivity();
+                activity.onAccountChosen(accounts.get(selectedIndex));
+              }
+            })
+            .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int id) {
+                // User cancelled the dialog
+                if(widgetMode) {
+                  getActivity().finish();
+                }
+              }
+            });
     return builder.create();
   }
 }

@@ -5,11 +5,14 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
 import android.preference.PreferenceManager;
 import android.test.ActivityInstrumentationTestCase2;
 
 import com.coinbase.android.Constants;
 import com.coinbase.android.TestCaseEntryPointActivity;
+import com.coinbase.android.db.AccountORM;
+import com.coinbase.android.db.ClientCacheDatabase;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.event.BusModule;
 import com.coinbase.api.Coinbase;
@@ -26,6 +29,7 @@ import org.joda.money.Money;
 import roboguice.RoboGuice;
 import roboguice.config.DefaultRoboModule;
 
+import static com.coinbase.android.test.MockResponses.mockAccount;
 import static com.coinbase.android.test.MockResponses.mockCurrentUser;
 import static com.coinbase.android.test.MockResponses.mockUser;
 import static org.mockito.Matchers.any;
@@ -82,19 +86,19 @@ public abstract class MockApiTest extends ActivityInstrumentationTestCase2 {
     mockLoginManager = mock(LoginManager.class);
     testBus = new Bus();
 
-    // TODO remove the methods that take contexts
-    doReturn(true).when(mockLoginManager).isSignedIn((Context) any());
-
     doReturn(mockCoinbase).when(mockLoginManager).getClient();
-    doReturn(mockCoinbase).when(mockLoginManager).getClient(anyInt());
-    doReturn(1).when(mockLoginManager).getActiveAccount();
     doReturn(true).when(mockLoginManager).isSignedIn();
     doReturn(mockCurrentUser().getId()).when(mockLoginManager).getActiveUserId();
-    doReturn("mockAccountId").when(mockLoginManager).getActiveAccountId();
+    doReturn(mockAccount().getId()).when(mockLoginManager).getActiveAccountId();
 
     Application application =
             (Application) getInstrumentation().getTargetContext().getApplicationContext();
+    application.deleteDatabase(ClientCacheDatabase.DATABASE_NAME);
     dbManager = new DatabaseManager(application);
+
+    SQLiteDatabase db = dbManager.openDatabase();
+    AccountORM.insert(db, mockAccount());
+    dbManager.closeDatabase();
 
     Module roboGuiceModule = RoboGuice.newDefaultRoboModule(application);
     Module testModules = Modules.combine(
@@ -108,11 +112,6 @@ public abstract class MockApiTest extends ActivityInstrumentationTestCase2 {
     // Clear preferences
     SharedPreferences defaultPreferences = PreferenceManager.getDefaultSharedPreferences(getInstrumentation().getTargetContext());
     defaultPreferences.edit().clear().commit();
-
-    // TODO Remove this when we centralize access through loginmanager
-    SharedPreferences.Editor e = defaultPreferences.edit();
-    e.putInt(Constants.KEY_ACTIVE_ACCOUNT, 1);
-    e.commit();
 
     // - Initialize Robotium driver.
     solo = new Solo(getInstrumentation(), getActivity());
