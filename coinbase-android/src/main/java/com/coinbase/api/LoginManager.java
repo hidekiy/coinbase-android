@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 
 import com.coinbase.api.entity.Account;
 
+import org.joda.money.CurrencyUnit;
+
 import java.util.List;
 
 public interface LoginManager {

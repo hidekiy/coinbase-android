@@ -194,7 +194,7 @@
     <string name="pos_accept_waiting_error">We\'re having trouble verifying payment...\nCheck your internet connection.</string>
     <string name="pos_result_failure_creation">Could not create order.</string>
     <string name="pos_result_failure_creation_exception">Could not create order (%1$s).</string>
-    <string name="pos_result_completed">Received payment of %1$s %2$s.</string>
+    <string name="pos_result_completed">Received payment of %1$s.</string>
     <string name="pos_result_mispaid">Wrong amount sent for this order. Order is not complete. Manual refund may be required.</string>
     <string name="pos_result_failure_cancel">Order cancelled.</string>
     <string name="pos_result_ok">OK</string>
@@ -263,11 +263,11 @@
     <string name="delayed_notification_success_subtitle">Transaction successfully sent.</string>
     <string name="delayed_notification_failure_request">Could not request from %1$s</string>
     <string name="delayed_notification_failure_send">Could not send to %1$s</string>
-    <string name="pos_tip_title">Total: &lt;b>%1$s %2$s&lt;/b></string>
+    <string name="pos_tip_title">Total: &lt;b>%1$s&lt;/b></string>
     <string name="pos_tip_button">Tip &lt;b>%1$s%%&lt;/b></string>
     <string name="pos_tip_custom">Tip custom amount</string>
     <string name="pos_tip_custom_hint">0</string>
-    <string name="pos_tip_custom_text">%% = %1$s %2$s</string>
+    <string name="pos_tip_custom_text">%% = %1$s</string>
     <string name="pos_tip_custom_confirm">OK</string>
     <string name="pos_tip_enable_title">Enable tip prompt?</string>
     <string name="pos_tip_enable_text">When the tip prompt is enabled, Coinbase Merchant will ask for a tip after clicking \"Request payment\". Enable the tip prompt?</string>

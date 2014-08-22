@@ -40,6 +40,7 @@ public class TransactionDetailsFragment extends RoboFragment {
   protected DatabaseManager mDbManager;
 
   public static final String ID = "id";
+  public static final String DELAYED = "delayed";
 
   private static enum ActionType {
     RESEND,
@@ -163,7 +164,7 @@ public class TransactionDetailsFragment extends RoboFragment {
   private class CancelRequestTask extends com.coinbase.android.task.CancelRequestTask {
     ProgressDialog mDialog;
 
-    @InjectResource(R.string.transactiondetails_action_success_complete)
+    @InjectResource(R.string.transactiondetails_action_success_cancel)
     String successMessage;
 
     public CancelRequestTask(String txId) {
@@ -228,7 +229,7 @@ public class TransactionDetailsFragment extends RoboFragment {
       }
 
       mContainer.setVisibility(View.VISIBLE);
-      fillViewsForTransaction(transaction, false);
+      fillViewsForTransaction(transaction);
     }
 
     @Override
@@ -278,8 +279,19 @@ public class TransactionDetailsFragment extends RoboFragment {
 
       new LoadTransactionTask(transactionId).execute();
       mContainer.setVisibility(View.GONE);
-    } else {
+    } else if (args.getBoolean(DELAYED)) {
+      // Fetch transaction from cache
+      Transaction transaction;
+      final String transactionId = getArguments().getString(ID);
+      SQLiteDatabase db = mDbManager.openDatabase();
+      try {
+        transaction = DelayedTransactionORM.find(db, transactionId);
+      } finally {
+        mDbManager.closeDatabase();
+      }
 
+      fillViewsForDelayedTransaction(transaction);
+    } else {
       // Fetch transaction from cache
       Transaction transaction;
       final String transactionId = getArguments().getString(ID);
@@ -291,15 +303,72 @@ public class TransactionDetailsFragment extends RoboFragment {
       }
 
       if (transaction != null) {
-        // TODO include delayed as argument to fragment
-        fillViewsForTransaction(transaction, false);
+        fillViewsForTransaction(transaction);
       } else {
         new LoadTransactionTask(transactionId).execute();
       }
     }
   }
 
-  private void fillViewsForTransaction(final Transaction tx, boolean delayed) {
+  private void fillViewsForDelayedTransaction(final Transaction tx) {
+    // Amount
+    String amountText = Utils.formatMoney(tx.getAmount().abs());
+    amount.setText(amountText);
+    int amountLabelResource;
+    if (tx.isRequest()) {
+      amountLabelResource = R.string.transactiondetails_amountrequested;
+    } else {
+      amountLabelResource = R.string.transactiondetails_amountsent;
+    }
+    amountLabel.setText(amountLabelResource);
+
+    String fromText, toText;
+    if (tx.isRequest()) {
+      fromText = tx.getFrom();
+      toText = getString(R.string.transaction_user_you);
+    } else {
+      fromText = getString(R.string.transaction_user_you);
+      toText = tx.getTo();
+    }
+    from.setText(fromText);
+    to.setText(toText);
+    if (Build.VERSION.SDK_INT >= 11) {
+      from.setTextIsSelectable(true);
+      to.setTextIsSelectable(true);
+    }
+
+    // Date
+    if (tx.getCreatedAt() != null) {
+      date.setText(tx.getCreatedAt().toString("MMMM dd, yyyy, 'at' hh:mma zzz"));
+    } else {
+      date.setText(null);
+    }
+    date.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
+
+    status.setText(getString(R.string.transaction_status_delayed));
+    status.setBackgroundResource(R.drawable.transaction_delayed);
+
+    // Notes
+    String notesText = tx.getNotes();
+
+    boolean noNotes = "null".equals(notesText) || notesText == null || "".equals(notesText);
+    notes.setText(noNotes ? null : Html.fromHtml(notesText.replace("\n", "<br>")));
+    notes.setVisibility(noNotes ? View.GONE : View.VISIBLE);
+
+    notesLabel.setVisibility(noNotes ? View.INVISIBLE : View.VISIBLE);
+
+    // Transaction has not actually been sent - show cancel button
+    positive.setText(R.string.transactiondetails_delayed_cancel);
+    negative.setVisibility(View.GONE);
+    positive.setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View v) {
+        cancelDelayedTransaction(tx);
+      }
+    });
+  }
+
+  private void fillViewsForTransaction(final Transaction tx) {
     // Get user ID
     String currentUserId = mLoginManager.getActiveUserId();
 
@@ -337,20 +406,15 @@ public class TransactionDetailsFragment extends RoboFragment {
     int background = R.drawable.transaction_unknown;
     String readable = getString(R.string.transaction_status_error);
 
-    if (delayed) {
-      readable = getString(R.string.transaction_status_delayed);
-      background = R.drawable.transaction_delayed;
-    } else {
-      switch (transactionStatus) {
-        case COMPLETE:
-          readable = getString(R.string.transaction_status_complete);
-          background = R.drawable.transaction_complete;
-          break;
-        case PENDING:
-          readable = getString(R.string.transaction_status_pending);
-          background = R.drawable.transaction_pending;
-          break;
-      }
+    switch (transactionStatus) {
+      case COMPLETE:
+        readable = getString(R.string.transaction_status_complete);
+        background = R.drawable.transaction_complete;
+        break;
+      case PENDING:
+        readable = getString(R.string.transaction_status_pending);
+        background = R.drawable.transaction_pending;
+        break;
     }
 
     status.setText(readable);
@@ -369,19 +433,6 @@ public class TransactionDetailsFragment extends RoboFragment {
     boolean senderOrRecipientIsExternal = tx.getSender() == null || tx.getRecipient() == null;
     negative.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
     positive.setTypeface(FontManager.getFont(getActivity(), "Roboto-Light"));
-
-    if (delayed) {
-      // Transaction has not actually been sent - show cancel button
-
-      positive.setText(R.string.transactiondetails_delayed_cancel);
-      negative.setVisibility(View.GONE);
-      positive.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-          cancelDelayedTransaction(tx);
-        }
-      });
-    }
 
     if(!tx.isRequest() || senderOrRecipientIsExternal || tx.getStatus() != Transaction.Status.PENDING) {
       // No actions

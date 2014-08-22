@@ -8,6 +8,7 @@ import com.coinbase.api.entity.AddressResponse;
 import com.coinbase.api.entity.AddressesResponse;
 import com.coinbase.api.entity.Contact;
 import com.coinbase.api.entity.ContactsResponse;
+import com.coinbase.api.entity.Merchant;
 import com.coinbase.api.entity.Quote;
 import com.coinbase.api.entity.Response;
 import com.coinbase.api.entity.Transaction;
@@ -81,7 +82,11 @@ public class MockResponses {
   }
 
   public static User mockCurrentUser() {
+    Merchant merchant = new Merchant();
+    merchant.setCompanyName("Android Test Inc");
+
     User user = new User();
+    user.setMerchant(merchant);
     user.setId("MockCurrentUserId");
     user.setName("Test Current User");
     user.setEmail("currentuser@example.com");
@@ -187,7 +192,9 @@ public class MockResponses {
   }
 
   public static TransactionsResponse mockEmptyTransactionsResponse() {
-    return newResponse(TransactionsResponse.class, 0, 25, 1);
+    TransactionsResponse result = newResponse(TransactionsResponse.class, 0, 25, 1);
+    result.setTransactions(new ArrayList<Transaction>());
+    return result;
   }
 
   public static TransactionsResponse mockTransactionsResponse(Transaction transaction) {
@@ -290,6 +297,15 @@ public class MockResponses {
     List<AccountChange> changes = new ArrayList<AccountChange>();
     changes.add(change);
     return mockAccountChanges(changes);
+  }
+
+  public static AccountChangesResponse mockEmptyAccountChangesResponse() {
+    AccountChangesResponse result = newResponse(AccountChangesResponse.class, 0, 25, 1);
+    result.setAccountChanges(new ArrayList<AccountChange>());
+    result.setCurrentUser(mockCurrentUser());
+    result.setBalance(Money.parse("BTC 1.00"));
+    result.setNativeBalance(Money.parse("USD 600.00"));
+    return result;
   }
 
   public static AccountChangesResponse mockAccountChanges() {

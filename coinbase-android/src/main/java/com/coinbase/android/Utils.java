@@ -29,6 +29,7 @@ import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.AccountChange;
 import com.coinbase.api.entity.Contact;
 import com.coinbase.api.entity.Transaction;
+import com.coinbase.api.entity.User;
 import com.google.inject.Inject;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -295,7 +296,7 @@ public class Utils {
     String html;
 
     if (tx.isRequest()) {
-      html = String.format(c.getString(R.string.transaction_summary_request_me), tx.getFrom());
+      html = String.format(c.getString(R.string.transaction_summary_request_them), tx.getFrom());
     } else {
       html = String.format(c.getString(R.string.transaction_summary_send_me), tx.getTo());
     }
@@ -352,14 +353,35 @@ public class Utils {
     return Html.fromHtml(html);
   }
 
-  @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-  public static <T> void runAsyncTaskConcurrently(AsyncTask<T, ?, ?> task, T... params) {
+  public static CharSequence generateTransactionSummary(Context c, Transaction tx) {
+    boolean senderMe = tx.getAmount().isNegative();
 
-    if (PlatformUtils.hasHoneycomb()) {
-      task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, params);
+    User otherUser = senderMe ? tx.getRecipient() : tx.getSender();
+    String otherName;
+
+
+    if (otherUser == null) {
+      otherName = c.getString(R.string.transaction_user_external);
     } else {
-      task.execute(params);
+      otherName = otherUser.getName().replace(" ", "\u00A0");
     }
+
+    String html = null;
+
+    if (tx.isRequest()) {
+      if(senderMe) {
+        html = String.format(c.getString(R.string.transaction_summary_request_me), otherName);
+      } else {
+        html = String.format(c.getString(R.string.transaction_summary_request_them), otherName);
+      }
+    } else {
+      if(senderMe) {
+        html = String.format(c.getString(R.string.transaction_summary_send_me), otherName);
+      } else {
+        html = String.format(c.getString(R.string.transaction_summary_send_them), otherName);
+      }
+    }
+    return Html.fromHtml(html);
   }
 
   public static String md5(String original) {

@@ -1,14 +1,22 @@
 package com.coinbase.android.test;
 
+import android.database.sqlite.SQLiteDatabase;
+
 import com.coinbase.android.TestTransactionsFragmentActivity;
+import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.api.entity.AccountChangesResponse;
 import com.coinbase.api.entity.Transaction;
 import com.coinbase.api.entity.TransactionsResponse;
 
+import org.joda.money.Money;
+import org.joda.time.DateTime;
+
+import static com.coinbase.android.test.MockResponses.mockAccount;
 import static com.coinbase.android.test.MockResponses.mockAccountChange;
 import static com.coinbase.android.test.MockResponses.mockAccountChanges;
 import static com.coinbase.android.test.MockResponses.mockConfirmedReceivedTransaction;
 import static com.coinbase.android.test.MockResponses.mockConfirmedSentTransaction;
+import static com.coinbase.android.test.MockResponses.mockEmptyAccountChangesResponse;
 import static com.coinbase.android.test.MockResponses.mockEmptyTransactionsResponse;
 import static com.coinbase.android.test.MockResponses.mockPendingReceivedTransaction;
 import static com.coinbase.android.test.MockResponses.mockReceivedPendingRequestTransaction;
@@ -148,5 +156,44 @@ public class TransactionsFragmentTest extends MockApiTest {
     getSolo().clickOnText("Send");
     getSolo().waitForText("Request completed.");
     verify(mockCoinbase, times(1)).completeRequest(pendingRequest.getId());
+  }
+
+  public void testDelayedTransaction() throws Exception {
+    Transaction delayedRequest = new Transaction();
+    delayedRequest.setCreatedAt(DateTime.now());
+    delayedRequest.setTo("contractor@example.com");
+    delayedRequest.setRequest(false);
+    delayedRequest.setNotes("herp derp");
+    delayedRequest.setAmount(Money.parse("BTC 1.23"));
+
+    SQLiteDatabase db = dbManager.openDatabase();
+    DelayedTransactionORM.insert(db, mockAccount().getId(), delayedRequest);
+    assertTrue(DelayedTransactionORM.getTransactions(db, mockAccount().getId()).size() != 0);
+    dbManager.closeDatabase();
+
+    AccountChangesResponse response = mockEmptyAccountChangesResponse();
+    doReturn(response).when(mockCoinbase).getAccountChanges(anyInt());
+
+    TransactionsResponse txResponse = mockEmptyTransactionsResponse();
+    doReturn(txResponse).when(mockCoinbase).getTransactions();
+    doReturn(txResponse).when(mockCoinbase).getTransactions(anyInt());
+
+    startTestActivity();
+
+    assertTrue(getSolo().searchText("UNSENT"));
+    assertTrue(getSolo().searchText("฿1.2300"));
+    assertTrue(getSolo().searchText("You sent money to contractor@example.com"));
+
+    getSolo().clickOnText("You sent money to contractor@example.com");
+    assertTrue(getSolo().searchText("฿1.2300"));
+    assertTrue(getSolo().searchText("UNSENT"));
+    assertTrue(getSolo().searchText("herp derp"));
+
+    getSolo().clickOnText("Cancel");
+    getSolo().waitForText("Cancelled.");
+
+    db = dbManager.openDatabase();
+    assertTrue(DelayedTransactionORM.getTransactions(db, mockAccount().getId()).size() == 0);
+    dbManager.closeDatabase();
   }
 }

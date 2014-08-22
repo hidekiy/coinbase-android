@@ -60,21 +60,6 @@ public class PINPromptActivity extends CoinbaseActivity {
 
     setContentView(R.layout.activity_pinprompt);
 
-    boolean hideSwitchAccounts = mIsSetMode || BuildConfig.type == BuildType.MERCHANT;
-    findViewById(R.id.pin_switch_accounts).setOnClickListener(new View.OnClickListener() {
-
-      @Override
-      public void onClick(View v) {
-
-        /* TODO
-        new AccountsFragment().show(getSupportFragmentManager(), "accounts");
-        */
-      }
-    });
-    ((TextView) findViewById(R.id.pin_switch_accounts)).setTypeface(
-            FontManager.getFont(this, "RobotoCondensed-Regular"));
-    findViewById(R.id.pin_switch_accounts).setVisibility(hideSwitchAccounts ? View.GONE : View.VISIBLE);
-
     ((TextView) findViewById(R.id.pin_account)).setText(mLoginManager.getSelectedAccountName());
 
     mPinNumberField = ((EditText) findViewById(R.id.pin_number));
@@ -224,26 +209,4 @@ public class PINPromptActivity extends CoinbaseActivity {
           mPinManager.setQuitPINLock(true);
       }
   }
-
-  /* TODO
-
-  public void onAccountChosen(int account) {
-
-    // Change active account
-    mLoginManager.switchActiveAccount(this, account);
-
-    finish();
-    startActivity(new Intent(this, getClass()));
-    overridePendingTransition(0, 0);
-  }
-
-  public void onAddAccount() {
-
-    Intent intent = new Intent(this, LoginActivity.class);
-    intent.putExtra(LoginActivity.EXTRA_SHOW_INTRO, false);
-    startActivity(intent);
-    finish();
-  }
-
-  */
 }

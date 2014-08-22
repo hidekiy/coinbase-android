@@ -77,17 +77,7 @@ public class CoinbaseApplication extends Application {
 
   private List<MainActivity> mMainActivities = new ArrayList<MainActivity>();
 
-  public void addMainActivity(MainActivity mainActivity) {
-    mMainActivities.add(mainActivity);
-  }
-
   public void removeMainActivity(MainActivity mainActivity) {
     mMainActivities.remove(mainActivity);
-  }
-
-  public void onDbChange() {
-    for (MainActivity m : mMainActivities) {
-      m.getTransactionsFragment().loadTransactionsList();;
-    }
   }
 }

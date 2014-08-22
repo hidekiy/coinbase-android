@@ -36,10 +36,7 @@ public class CoinbaseActivity extends RoboSherlockFragmentActivity {
       // Check authentication status
       if(!mLoginManager.isSignedIn()) {
         // Not signed in - open login activity.
-        Intent intent = new Intent(this, LoginActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
+        redirectToLoginPage();
       }
     }
   }
@@ -51,10 +48,7 @@ public class CoinbaseActivity extends RoboSherlockFragmentActivity {
       // Check authentication status
       if(!mLoginManager.isSignedIn()) {
         // Not signed in - open login activity.
-        Intent intent = new Intent(this, LoginActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
+        redirectToLoginPage();
       }
     }
 
@@ -75,5 +69,12 @@ public class CoinbaseActivity extends RoboSherlockFragmentActivity {
     }
 
     super.onResume();
+  }
+
+  protected void redirectToLoginPage() {
+    Intent intent = new Intent(this, LoginActivity.class);
+    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+    startActivity(intent);
+    finish();
   }
 }

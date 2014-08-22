@@ -1,6 +1,9 @@
 package com.coinbase.android;
 
+import android.animation.Animator;
+import android.animation.AnimatorSet;
 import android.animation.LayoutTransition;
+import android.animation.ObjectAnimator;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
@@ -8,14 +11,18 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentTransaction;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,15 +34,18 @@ import android.widget.AbsListView.OnScrollListener;
 import android.widget.Adapter;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.WrapperListAdapter;
 
 import com.coinbase.android.db.AccountChangeORM;
+import com.coinbase.android.db.AccountORM;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
 import com.coinbase.android.event.TransactionsSyncedEvent;
+import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.task.ApiTask;
 import com.coinbase.android.util.InsertedItemListAdapter;
 import com.coinbase.api.LoginManager;
@@ -44,12 +54,11 @@ import com.coinbase.api.entity.AccountChangesResponse;
 import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
 import org.acra.ACRA;
-import org.joda.money.CurrencyUnit;
 import org.joda.money.Money;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,6 +77,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     public void onSendMoneyClicked();
     public void onStartTransactionsSync();
     public void onFinishTransactionsSync();
+    public void onEnteringDetailsMode();
+    public void onExitingDetailsMode();
   }
 
   private class SyncTransactionsTask extends ApiTask<Void> {
@@ -166,20 +177,6 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
 
     @Override
-    public void onSuccess(Void v) {
-      // Update list
-      loadTransactionsList();
-
-      // Update transaction widgets
-      updateWidgets();
-
-      mBus.post(new TransactionsSyncedEvent());
-
-      // TODO Successful sync. This is a good time to check for any left over delayed TX.
-      // mParentActivity.startService(new Intent(mParentActivity, DelayedTxSenderService.class));
-    }
-
-    @Override
     protected void onException(Exception ex) {
       if (mSyncErrorView != null) {
         mSyncErrorView.setVisibility(View.VISIBLE);
@@ -196,27 +193,104 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
           mSyncErrorView.setBackgroundColor(mParentActivity.getResources().getColor(R.color.transactions_sync_error_calm));
         }
 
-        // TODO check if tokens are invalid and display dialog
-
+        if (!mLoginManager.isSignedIn()) {
+          mLoginManager.signout();
+          getActivity().finish();
+        }
       }
       super.onException(ex);
     }
 
     @Override
     public void onFinally() {
+      // Update list
+      loadTransactionsList();
+
+      // Update transaction widgets
+      updateWidgets();
+
+      mBus.post(new TransactionsSyncedEvent());
+
       mSyncTask = null;
       mListener.onFinishTransactionsSync();
     }
   }
 
-  private interface TransactionDisplayItem {
+  private interface TransactionListDisplayItem {
     public void configureStatusView (TextView statusView);
     public void configureTitleView (TextView titleView);
     public void configureAmountView (TextView amountView);
     public void onClick();
   }
 
-  private class AccountChangeDisplayItem implements TransactionDisplayItem {
+  private class TransactionDisplayItem implements TransactionListDisplayItem {
+    protected Transaction mTransaction;
+
+    public TransactionDisplayItem(Transaction transaction) {
+      mTransaction = transaction;
+    }
+
+    public void configureStatusView (TextView statusView) {
+      String readable;
+      int scolor;
+
+      switch (mTransaction.getStatus()) {
+        case COMPLETE:
+          readable = getString(R.string.transaction_status_complete);
+          scolor = R.color.transaction_inlinestatus_complete;
+          break;
+        default:
+          readable = getString(R.string.transaction_status_pending);
+          scolor = R.color.transaction_inlinestatus_pending;
+          break;
+      }
+
+      statusView.setText(readable);
+      statusView.setTextColor(getResources().getColor(scolor));
+      statusView.setTypeface(FontManager.getFont(mParentActivity, "RobotoCondensed-Regular"));
+    }
+
+    public void configureTitleView (TextView titleView) {
+      titleView.setText(Utils.generateTransactionSummary(mParentActivity, mTransaction));
+      titleView.setTypeface(FontManager.getFont(mParentActivity, "Roboto-Light"));
+    }
+
+    public void configureAmountView (TextView amountView) {
+      Money amount = mTransaction.getAmount();
+      if (amount.isPositive()) {
+        amountView.setTextColor(getResources().getColor(R.color.transaction_positive));
+      } else if (amount.isNegative()) {
+        amountView.setTextColor(getResources().getColor(R.color.transaction_negative));
+      } else {
+        amountView.setTextColor(getResources().getColor(R.color.transaction_neutral));
+      }
+
+      Money displayAmount = mTransaction.getAmount().abs();
+      amountView.setText(Utils.formatMoneyRounded(displayAmount));
+    }
+
+    @Override
+    public void onClick() {
+      if (mDetailsShowing) {
+        return;
+      }
+
+      String transactionId = mTransaction.getId();
+      Bundle args = new Bundle();
+      args.putString(TransactionDetailsFragment.ID, transactionId);
+      TransactionDetailsFragment fragment = new TransactionDetailsFragment();
+      fragment.setArguments(args);
+
+      FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
+      transaction.add(R.id.transaction_details_host, fragment);
+      transaction.addToBackStack("details");
+      transaction.commit();
+
+      showDetails();
+    }
+  }
+
+  private class AccountChangeDisplayItem implements TransactionListDisplayItem {
     protected AccountChange mAccountChange;
 
     public AccountChangeDisplayItem(AccountChange accountChange) {
@@ -279,7 +353,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
   }
 
-  private class DelayedTransactionDisplayItem implements TransactionDisplayItem {
+  private class DelayedTransactionDisplayItem implements TransactionListDisplayItem {
     protected Transaction mTransaction;
 
     public DelayedTransactionDisplayItem(Transaction transaction) {
@@ -313,15 +387,31 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
     @Override
     public void onClick() {
-      // TODO
+      if (mDetailsShowing) {
+        return;
+      }
+
+      String transactionId = mTransaction.getId();
+      Bundle args = new Bundle();
+      args.putString(TransactionDetailsFragment.ID, transactionId);
+      args.putBoolean(TransactionDetailsFragment.DELAYED, true);
+      TransactionDetailsFragment fragment = new TransactionDetailsFragment();
+      fragment.setArguments(args);
+
+      FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
+      transaction.add(R.id.transaction_details_host, fragment);
+      transaction.addToBackStack("details");
+      transaction.commit();
+
+      showDetails();
     }
   }
 
   private class TransactionsAdapter extends BaseAdapter {
     private LayoutInflater mInflater;
-    private List<TransactionDisplayItem> mItems;
+    private List<TransactionListDisplayItem> mItems;
 
-    public TransactionsAdapter(Context context, List<TransactionDisplayItem> items) {
+    public TransactionsAdapter(Context context, List<TransactionListDisplayItem> items) {
       mInflater = LayoutInflater.from(context);
       mItems = items;
     }
@@ -332,7 +422,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
 
     @Override
-    public TransactionDisplayItem getItem(int position) {
+    public TransactionListDisplayItem getItem(int position) {
       return mItems.get(position);
     }
 
@@ -343,7 +433,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-      final TransactionDisplayItem item = getItem(position);
+      final TransactionListDisplayItem item = getItem(position);
       View view = convertView;
       if (view == null) {
         view = mInflater.inflate(R.layout.fragment_transactions_item, null);
@@ -361,7 +451,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
   }
 
-  private class LoadTransactionsTask extends RoboAsyncTask<List<TransactionDisplayItem>> {
+  private class LoadTransactionsTask extends RoboAsyncTask<List<TransactionListDisplayItem>> {
     @Inject
     protected DatabaseManager mDbManager;
 
@@ -373,8 +463,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
 
     @Override
-    public List<TransactionDisplayItem> call() throws Exception {
-      List<TransactionDisplayItem> items = new ArrayList<TransactionDisplayItem>();
+    public List<TransactionListDisplayItem> call() throws Exception {
+      List<TransactionListDisplayItem> items = new ArrayList<TransactionListDisplayItem>();
 
       SQLiteDatabase db = mDbManager.openDatabase();
       try {
@@ -397,7 +487,9 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
 
     @Override
-    public void onSuccess(List<TransactionDisplayItem> items) {
+    public void onSuccess(List<TransactionListDisplayItem> items) {
+      mItems = items;
+
       if (mListView != null) {
 
         setHeaderPinned(items.isEmpty());
@@ -407,7 +499,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         Constants.RateNoticeState rateNoticeState = Constants.RateNoticeState.valueOf(Utils.getPrefsString(mParentActivity, Constants.KEY_ACCOUNT_RATE_NOTICE_STATE, Constants.RateNoticeState.NOTICE_NOT_YET_SHOWN.name()));
         boolean showRateNotice = rateNoticeState == Constants.RateNoticeState.SHOULD_SHOW_NOTICE;
 
-        TransactionsAdapter adapter = new TransactionsAdapter(mParentActivity, items);
+        TransactionsAdapter adapter = new TransactionsAdapter(mParentActivity, mItems);
 
         View rateNotice = getRateNotice();
         InsertedItemListAdapter wrappedAdapter = new InsertedItemListAdapter(adapter, rateNotice, 2);
@@ -464,10 +556,20 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   boolean mDetailsShowing = false;
   Money mBalanceBtc, mBalanceNative;
 
+  List<TransactionListDisplayItem> mItems;
   SyncTransactionsTask mSyncTask;
   int mLastLoadedPage = -1, mMaxPage = -1;
 
   @InjectResource(R.string.wallet_balance_home) String mNativeBalanceFormatString;
+
+  @Inject
+  LoginManager mLoginManager;
+
+  @Inject
+  DatabaseManager mDbManager;
+
+  @Inject
+  Bus mBus;
 
   @Override
   public void onAttach(Activity activity) {
@@ -570,32 +672,20 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       }
     });
 
-    /* TODO Load cached balance from db
-
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParentActivity);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String oldBalance = prefs.getString(String.format(Constants.KEY_ACCOUNT_BALANCE, activeAccount), null);
-    String oldHomeBalanceString = prefs.getString(String.format(Constants.KEY_ACCOUNT_BALANCE_HOME, activeAccount), null);
-    String oldHomeCurrency = prefs.getString(String.format(Constants.KEY_ACCOUNT_BALANCE_HOME_CURRENCY, activeAccount), null);
-
-    if(oldBalance != null) {
-      try {
-        setBalance(Money.of(CurrencyUnit.getInstance("BTC"), new BigDecimal(oldBalance)));
-      } catch (NumberFormatException e) {
-        // Old versions of the app would store the balance in a localized format
-        // ex. in some countries with the decimal separator "," instead of "."
-        // Restoring balance will fail on upgrade, so just ignore it
-        // and reload the balance from the network
+    SQLiteDatabase db = mDbManager.openDatabase();
+    try {
+      Money oldBalance       = AccountORM.getCachedBalance(db, mLoginManager.getActiveAccountId());
+      Money oldNativeBalance = AccountORM.getCachedNativeBalance(db, mLoginManager.getActiveAccountId());
+      if (oldBalance != null) {
+        setBalance(oldBalance);
+        mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color));
       }
-      mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color));
-
-      if (oldHomeCurrency != null && oldHomeBalanceString != null) {
-        Money oldHomeBalance = Money.of(CurrencyUnit.getInstance(oldHomeCurrency), new BigDecimal(oldHomeBalanceString));
-        mBalanceHome.setText(String.format(mParentActivity.getString(R.string.wallet_balance_home), Utils.formatMoney(oldHomeBalance)));
+      if (oldNativeBalance != null) {
+        mBalanceHome.setText(String.format(mParentActivity.getString(R.string.wallet_balance_home), Utils.formatMoney(oldNativeBalance)));
       }
+    } finally {
+      mDbManager.closeDatabase();
     }
-
-    */
 
     if(mBalanceLoading) {
       mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color_invalid));
@@ -608,7 +698,6 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       }
     });
 
-    // Load transaction list
     loadTransactionsList();
 
     if (savedInstanceState != null && savedInstanceState.getBoolean("details_showing", false)) {
@@ -621,6 +710,8 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
   @Override
   public void onStart() {
+    super.onStart();
+
     // Configure pull to refresh
     mPullToRefreshLayout = new PullToRefreshLayout(mParentActivity);
     AbsDefaultHeaderTransformer ht =
@@ -640,7 +731,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     ht.setPullText("Swipe down to refresh");
     ht.setRefreshingText("Refreshing...");
 
-    super.onStart();
+    mBus.register(this);
   }
 
   @Override
@@ -653,9 +744,9 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     boolean fuzzy = Utils.getPrefsBool(mParentActivity, Constants.KEY_ACCOUNT_BALANCE_FUZZY, true);
     String balanceString;
     if (fuzzy) {
-      balanceString = Utils.formatMoneyRounded(mBalanceBtc);
+      balanceString = Utils.formatMoneyRounded(balance);
     } else {
-      balanceString = Utils.formatMoney(mBalanceBtc);
+      balanceString = Utils.formatMoney(balance);
     }
     mBalanceText.setText(balanceString);
     mBalanceText.setTag(balance);
@@ -726,13 +817,13 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     try {
       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mParentActivity);
 
-      /* TODO Save balance in cache db
-      Editor editor = prefs.edit();
-      editor.putString(String.format(Constants.KEY_ACCOUNT_BALANCE, activeAccount), mBalanceBtc.getAmount().toPlainString());
-      editor.putString(String.format(Constants.KEY_ACCOUNT_BALANCE_HOME, activeAccount), mBalanceNative.getAmount().toPlainString());
-      editor.putString(String.format(Constants.KEY_ACCOUNT_BALANCE_HOME_CURRENCY, activeAccount), mBalanceNative.getCurrencyUnit().getCurrencyCode());
-      editor.commit();
-      */
+      SQLiteDatabase db = mDbManager.openDatabase();
+      try {
+        AccountORM.setBalance(db, mLoginManager.getActiveAccountId(), mBalanceBtc);
+        AccountORM.setNativeBalance(db, mLoginManager.getActiveAccountId(), mBalanceNative);
+      } finally {
+        mDbManager.closeDatabase();
+      }
 
       // Update the view.
       mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color));
@@ -773,17 +864,10 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
   }
 
-  // TODO
-  /*
-  public void insertTransactionAnimated(final int insertAtIndex, final JSONObject transaction, final String category, final String status) {
+  public void insertTransactionAnimated(final int insertAtIndex, final TransactionListDisplayItem item) {
     if (!PlatformUtils.hasHoneycomb()) {
       // Do not play animation!
-      try {
-        Utils.insertTransaction(mParentActivity, transaction, Utils.createAccountChangeForTransaction(mParentActivity, transaction, category), status);
-        loadTransactionsList();
-      } catch (Exception e) {
-        throw new RuntimeException("Malformed JSON from Coinbase", e);
-      }
+      loadTransactionsList();
       refreshBalance();
       return;
     }
@@ -798,7 +882,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
         getListView().setSelection(0);
         getListView().postDelayed(new Runnable() {
           public void run() {
-            _insertTransactionAnimated(insertAtIndex, transaction, category, status);
+            _insertTransactionAnimated(insertAtIndex, item);
           }
         }, 500);
       }
@@ -806,7 +890,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   }
 
   @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-  private void _insertTransactionAnimated(int insertAtIndex, JSONObject transaction, String category, String status) {
+  private void _insertTransactionAnimated(int insertAtIndex, TransactionListDisplayItem item) {
 
     // Step 1
     // Take a screenshot of the relevant part of the list view and put it over top of the real one
@@ -842,26 +926,20 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     params.topMargin = heightToCropOff + getListView().getDividerHeight();
     fakeListView.setLayoutParams(params);
 
-    // Step 2
-    // Create a fake version of the new list item and a background for it to animate onto
-    JSONObject accountChange;
     View newListItem;
-    try {
-      accountChange = Utils.createAccountChangeForTransaction(mParentActivity, transaction, category);
 
-      newListItem = View.inflate(mParentActivity, R.layout.fragment_transactions_item, null);
-      TransactionViewBinder binder = new TransactionViewBinder();
-      for (int i : new int[] { R.id.transaction_title, R.id.transaction_amount,
-              R.id.transaction_currency }) {
-        if (newListItem.findViewById(i) != null) {
-          binder.setViewValue(newListItem.findViewById(i), accountChange.toString());
-        }
-      }
-      binder.setViewValue(newListItem.findViewById(R.id.transaction_status), status);
-      newListItem.setBackgroundColor(Color.WHITE);
-    } catch (JSONException e) {
-      throw new RuntimeException("Malformed JSON from Coinbase", e);
-    }
+    newListItem = View.inflate(mParentActivity, R.layout.fragment_transactions_item, null);
+
+    TextView titleView  = (TextView) newListItem.findViewById(R.id.transaction_title);
+    TextView amountView = (TextView) newListItem.findViewById(R.id.transaction_amount);
+    TextView statusView = (TextView) newListItem.findViewById(R.id.transaction_status);
+
+    item.configureAmountView(amountView);
+    item.configureStatusView(statusView);
+    item.configureTitleView(titleView);
+
+    newListItem.setBackgroundColor(Color.WHITE);
+
     int itemHeight = (int)(70 * metrics.density);
     FrameLayout.LayoutParams itemParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, itemHeight);
     itemParams.topMargin = heightToCropOff + getListView().getDividerHeight(); // account for divider
@@ -923,11 +1001,10 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
     // Step 4
     // Now that the animation is started, update the actual list values behind-the-scenes
-    Utils.insertTransaction(mParentActivity, transaction, accountChange, status);
-    loadTransactionsList();
+    mItems.add(0, item);
+    getAdapter(TransactionsAdapter.class).notifyDataSetChanged();
+    refresh();
   }
-
-  */
 
   @TargetApi(Build.VERSION_CODES.HONEYCOMB)
   public void loadTransactionsList() {
@@ -948,7 +1025,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
 
   @Override
   public void onListItemClick(ListView l, View v, int position, long id) {
-    TransactionDisplayItem i = (TransactionDisplayItem) l.getItemAtPosition(position);
+    TransactionListDisplayItem i = (TransactionListDisplayItem) l.getItemAtPosition(position);
     i.onClick();
   }
 
@@ -963,7 +1040,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
             AnimationUtils.loadAnimation(mParentActivity, R.anim.transactiondetails_enter));
 
     // 2. if necessary, change action bar
-    // TODO mParentActivity.setInTransactionDetailsMode(true);
+    mListener.onEnteringDetailsMode();
 
     // 3. pull to refresh
     mPullToRefreshLayout.setEnabled(false);
@@ -1001,7 +1078,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     transaction.commit();
 
     // 2. action bar
-    // TODO mParentActivity.setInTransactionDetailsMode(false);
+    mListener.onExitingDetailsMode();
 
     // 3. pull to refresh
     mPullToRefreshLayout.setEnabled(true);
@@ -1027,22 +1104,30 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   @Override
   public void onResume() {
     super.onResume();
-    // TODO bind to transaction polling service here
+    // TODO maybe bind to transaction polling service here?
     refresh();
-    loadTransactionsList();
   }
 
   @Override
   public void onPINPromptSuccessfulReturn() {
     if (mDetailsShowing) {
       ((TransactionDetailsFragment ) getChildFragmentManager().findFragmentById(R.id.transaction_details_host)).onPINPromptSuccessfulReturn();
-    } else {
-      // Not used
     }
   }
 
   @Override
   public String getTitle() {
     return getString(R.string.title_transactions);
+  }
+
+  @Subscribe
+  public void animateTransaction(TransferMadeEvent transfer) {
+    insertTransactionAnimated(0, new TransactionDisplayItem(transfer.transaction));
+  }
+
+  @Override
+  public void onStop() {
+    mBus.unregister(this);
+    super.onStop();
   }
 }

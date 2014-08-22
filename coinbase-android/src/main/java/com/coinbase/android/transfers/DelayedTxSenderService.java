@@ -13,14 +13,17 @@ import android.util.Log;
 import com.coinbase.android.MainActivity;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;
+import com.coinbase.android.db.AccountORM;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
 import com.coinbase.api.LoginManager;
+import com.coinbase.api.entity.Account;
 import com.coinbase.api.entity.Transaction;
 import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -56,15 +59,14 @@ public class DelayedTxSenderService extends RoboService {
   }
 
   private void tryToSendAll() {
-
-    // TODO iterate through account ids instead of only current
-    String accountId = mLoginManager.getActiveAccountId();
-
     // Check database for delayed TX:
-    List<Transaction> delayedTransactions;
+    List<Transaction> delayedTransactions = new ArrayList<Transaction>();
     SQLiteDatabase db = mDbManager.openDatabase();
     try {
-      delayedTransactions = DelayedTransactionORM.getTransactions(db, accountId);
+      List<Account> accounts = AccountORM.list(db);
+      for (Account account : accounts) {
+        delayedTransactions.addAll(DelayedTransactionORM.getTransactions(db, account.getId()));
+      }
     } finally {
       mDbManager.closeDatabase();
     }

@@ -43,4 +43,14 @@ public class TestFragmentActivity<T extends Fragment> extends RoboFragmentActivi
   public void onFinishTransactionsSync() {
 
   }
+
+  @Override
+  public void onEnteringDetailsMode() {
+
+  }
+
+  @Override
+  public void onExitingDetailsMode() {
+
+  }
 }

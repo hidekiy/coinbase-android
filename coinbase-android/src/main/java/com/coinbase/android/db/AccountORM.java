@@ -22,6 +22,9 @@ public class AccountORM {
   public static final String COLUMN_ACCOUNT_ID      = "account_id";
   public static final String COLUMN_NAME            = "account_name";
   public static final String COLUMN_RECEIVE_ADDRESS = "receive_address";
+  public static final String COLUMN_BALANCE         = "balance";
+  public static final String COLUMN_NATIVE_BALANCE  = "native_balance";
+  public static final String COLUMN_NATIVE_CURRENCY = "native_currency";
 
   private static final String COMMA_SEP = ", ";
 
@@ -32,7 +35,10 @@ public class AccountORM {
           "CREATE TABLE " + TABLE_NAME + " (" +
                   COLUMN_ACCOUNT_ID      + TEXT_TYPE    + " NOT NULL" + COMMA_SEP +
                   COLUMN_NAME            + TEXT_TYPE    + " NOT NULL" + COMMA_SEP +
-                  COLUMN_RECEIVE_ADDRESS + TEXT_TYPE    +
+                  COLUMN_RECEIVE_ADDRESS + TEXT_TYPE    +               COMMA_SEP +
+                  COLUMN_BALANCE         + TEXT_TYPE    +               COMMA_SEP +
+                  COLUMN_NATIVE_BALANCE  + TEXT_TYPE    +               COMMA_SEP +
+                  COLUMN_NATIVE_CURRENCY + TEXT_TYPE                              +
                   ")";
 
   public static final String SQL_DROP_TABLE =
@@ -90,6 +96,80 @@ public class AccountORM {
   public static void setReceiveAddress(SQLiteDatabase db, String accountId, String receiveAddress) {
     ContentValues cv = new ContentValues();
     cv.put(COLUMN_RECEIVE_ADDRESS, receiveAddress);
+
+    // TODO throw exception if nothing updated
+    db.update(
+            TABLE_NAME,
+            cv,
+            COLUMN_ACCOUNT_ID + " = ?",
+            new String[]{accountId}
+    );
+  }
+
+  public static Money getCachedBalance(SQLiteDatabase db, String accountId) {
+    Cursor c = db.query(
+            TABLE_NAME,
+            null,
+            COLUMN_ACCOUNT_ID + " = ?",
+            new String[] { accountId },
+            null,
+            null,
+            null
+    );
+
+    if (c.moveToFirst()) {
+      String balanceString = c.getString(c.getColumnIndex(COLUMN_BALANCE));
+      if (balanceString != null) {
+        return Money.of(CurrencyUnit.getInstance("BTC"), new BigDecimal(balanceString));
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }
+
+  public static void setBalance(SQLiteDatabase db, String accountId, Money balance) {
+    ContentValues cv = new ContentValues();
+    cv.put(COLUMN_BALANCE, balance.getAmount().toPlainString());
+
+    // TODO throw exception if nothing updated
+    db.update(
+            TABLE_NAME,
+            cv,
+            COLUMN_ACCOUNT_ID + " = ?",
+            new String[]{accountId}
+    );
+  }
+
+  public static Money getCachedNativeBalance(SQLiteDatabase db, String accountId) {
+    Cursor c = db.query(
+            TABLE_NAME,
+            null,
+            COLUMN_ACCOUNT_ID + " = ?",
+            new String[] { accountId },
+            null,
+            null,
+            null
+    );
+
+    if (c.moveToFirst()) {
+      String balanceString = c.getString(c.getColumnIndex(COLUMN_NATIVE_BALANCE));
+      String balanceCurrency = c.getString(c.getColumnIndex(COLUMN_NATIVE_CURRENCY));
+      if (balanceString != null && balanceCurrency != null) {
+        return Money.of(CurrencyUnit.getInstance(balanceCurrency), new BigDecimal(balanceString));
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }
+
+  public static void setNativeBalance(SQLiteDatabase db, String accountId, Money balance) {
+    ContentValues cv = new ContentValues();
+    cv.put(COLUMN_NATIVE_BALANCE, balance.getAmount().toPlainString());
+    cv.put(COLUMN_NATIVE_CURRENCY, balance.getCurrencyUnit().getCurrencyCode());
 
     // TODO throw exception if nothing updated
     db.update(

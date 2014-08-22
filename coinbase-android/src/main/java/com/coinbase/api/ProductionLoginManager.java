@@ -29,6 +29,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
+import org.joda.money.CurrencyUnit;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;

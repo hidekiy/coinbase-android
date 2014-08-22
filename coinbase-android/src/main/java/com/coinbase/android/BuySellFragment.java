@@ -21,12 +21,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.coinbase.android.dialog.ConfirmationDialogFragment;
+import com.coinbase.android.event.BuySellMadeEvent;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.android.task.ApiTask;
 import com.coinbase.api.entity.Quote;
 import com.coinbase.api.entity.Transfer;
 import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
+import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
 import org.joda.money.BigMoney;
 import org.joda.money.BigMoneyProvider;
@@ -67,12 +70,6 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
     public GetQuoteTask(Context context, BigMoneyProvider amount) {
       super(context);
       mAmount = amount;
-    }
-
-    @Override
-    public void onException(Exception ex) {
-      Toast.makeText(context, R.string.buysell_type_price_error, Toast.LENGTH_SHORT).show();
-      super.onException(ex);
     }
 
     @Override
@@ -167,6 +164,9 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
 
     private ProgressDialog mDialog;
 
+    @Inject
+    private Bus mBus;
+
     @Override
     protected void onPreExecute() throws Exception {
       super.onPreExecute();
@@ -182,7 +182,7 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
       super.onSuccess(transfer);
       String text = String.format(getSuccessFormatString(), transfer.getBtc().getAmount().toPlainString());
       Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
-      // TODO update transactions
+      mBus.post(new BuySellMadeEvent(transfer));
     }
 
     @Override
@@ -262,6 +262,9 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
 
   @Inject
   protected PINManager mPinManager;
+
+  @Inject
+  protected Bus mBus;
 
   @Override
   public void onAttach(Activity activity) {
@@ -484,8 +487,25 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
     submit();
   }
 
+  @Subscribe
+  public void onSuccessfulTransfer(BuySellMadeEvent event) {
+    mAmount.setText(null);
+  }
+
   @Override
   public String getTitle() { return mTitle; }
+
+  @Override
+  public void onStart() {
+    super.onStart();
+    mBus.register(this);
+  }
+
+  @Override
+  public void onStop() {
+    mBus.unregister(this);
+    super.onStop();
+  }
 
   private void submit() {
     final BigMoney quantity = getQuantityEntered();

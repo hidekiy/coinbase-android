@@ -192,7 +192,7 @@
     <string name="pos_accept_waiting_error">Sunt probleme în verificarea plăţii... \nVerificaţi conexiunea dvs. la internet.</string>
     <string name="pos_result_failure_creation">Comanda nu a putut fi creată.</string>
     <string name="pos_result_failure_creation_exception">Comanda nu a putut fi creată (%1$s).</string>
-    <string name="pos_result_completed">Plată primită în valoare de %1$s %2$s.</string>
+    <string name="pos_result_completed">Plată primită în valoare de %1$s.</string>
     <string name="pos_result_mispaid">Suma trimisă pentru această comandă este greşită. Comanda nu este completă. Este posibil ca o restituire manuală să fie necesară.</string>
     <string name="pos_result_failure_cancel">Comandă anulată.</string>
     <string name="pos_result_ok">OK</string>

@@ -27,6 +27,7 @@ import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 import com.coinbase.android.CoinbaseActivity.RequiresAuthentication;
 import com.coinbase.android.CoinbaseActivity.RequiresPIN;
+import com.coinbase.android.event.BuySellMadeEvent;
 import com.coinbase.android.event.SectionSelectedEvent;
 import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.merchant.MerchantKioskHomeActivity;
@@ -34,6 +35,7 @@ import com.coinbase.android.merchant.MerchantKioskModeService;
 import com.coinbase.android.merchant.MerchantToolsFragment;
 import com.coinbase.android.pin.PINSettingDialogFragment;
 import com.coinbase.android.settings.AccountSettingsFragment;
+import com.coinbase.android.transfers.DelayedTxSenderService;
 import com.coinbase.android.transfers.TransferFragment;
 import com.coinbase.android.ui.Mintent;
 import com.coinbase.android.ui.SignOutFragment;
@@ -546,6 +548,9 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
   public void onResume() {
     super.onResume();
 
+    // Flush any leftover delayed transactions
+    startService(new Intent(this, DelayedTxSenderService.class));
+
     /* TODO Legacy support:
     // If the old Point of Sale is enabled, show a dialog directing them to the Play Store
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -792,6 +797,16 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
   }
 
   @Override
+  public void onEnteringDetailsMode() {
+    setInTransactionDetailsMode(true);
+  }
+
+  @Override
+  public void onExitingDetailsMode() {
+    setInTransactionDetailsMode(false);
+  }
+
+  @Override
   public void onStart() {
     super.onStart();
     mBus.register(this);
@@ -805,6 +820,11 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
 
   @Subscribe
   public void onTransferMade(TransferMadeEvent event) {
+    switchTo(FRAGMENT_INDEX_TRANSACTIONS);
+  }
+
+  @Subscribe
+  public void onBuySellMade(BuySellMadeEvent event) {
     // TODO Animate insertion
     switchTo(FRAGMENT_INDEX_TRANSACTIONS);
   }
