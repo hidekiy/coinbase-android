@@ -30,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
 
+import com.coinbase.android.CoinbaseActivity;
 import com.coinbase.android.CoinbaseFragment;
 import com.coinbase.android.FontManager;
 import com.coinbase.android.R;
@@ -41,6 +42,7 @@ import com.coinbase.android.util.BitcoinUri;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.Merchant;
 import com.coinbase.api.entity.Order;
+import com.github.rtyley.android.sherlock.roboguice.fragment.RoboSherlockFragment;
 import com.google.inject.Inject;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
@@ -63,7 +65,7 @@ import roboguice.fragment.RoboFragment;
 import roboguice.inject.InjectResource;
 import roboguice.inject.InjectView;
 
-public class PointOfSaleFragment extends RoboFragment implements CoinbaseFragment {
+public class PointOfSaleFragment extends RoboSherlockFragment implements CoinbaseFragment {
 
   private class CreateOrderTask extends ApiTask<Order> {
 
@@ -94,7 +96,7 @@ public class PointOfSaleFragment extends RoboFragment implements CoinbaseFragmen
 
     @Override
     public void onException(Exception ex) {
-      // TODO show exception
+      showResult(null, String.format(exceptionMessageString, ex.getMessage()), null);
     }
 
     @Override
@@ -161,7 +163,6 @@ public class PointOfSaleFragment extends RoboFragment implements CoinbaseFragmen
   }
 
   private class CheckStatusTask extends TimerTask {
-
     private Order mOrder;
     private int mTimesExecuted = 0;
 
@@ -190,7 +191,7 @@ public class PointOfSaleFragment extends RoboFragment implements CoinbaseFragmen
           onOrderCheckCompleted(mTimesExecuted);
         }
       } catch (Exception ex) {
-        onOrderCheckError(); // TODO make sure we stop checking or something on error
+        onOrderCheckError();
       }
     }
   }
@@ -508,6 +509,9 @@ public class PointOfSaleFragment extends RoboFragment implements CoinbaseFragmen
   }
 
   private void onOrderCheckError() {
+    mCheckStatusTimer.cancel();
+    mCheckStatusTimer = null;
+
     mParent.runOnUiThread(new Runnable() {
       @Override
       public void run() {
@@ -591,7 +595,7 @@ public class PointOfSaleFragment extends RoboFragment implements CoinbaseFragmen
       mAmount.requestFocus();
     }
 
-    // TODO Hide action bar
+    getSherlockActivity().getSupportActionBar().hide();
   }
 
   @Override

@@ -21,18 +21,15 @@ public class TransactionsAppWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void updateWidget(Context context, AppWidgetManager manager, int appWidgetId, String balance) {
-
-      /* TODO
-
-      int accountId = PreferenceManager.getDefaultSharedPreferences(context).getInt(
-          String.format(Constants.KEY_WIDGET_ACCOUNT, appWidgetId), -1);
+      String accountId = PreferenceManager.getDefaultSharedPreferences(context).getString(
+          String.format(Constants.KEY_WIDGET_ACCOUNT, appWidgetId), null);
       Intent intent = new Intent(context, TransactionsRemoteViewsService.class);
       intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-      intent.putExtra(TransactionsRemoteViewsService.EXTRA_ACCOUNT_ID, accountId);
+      intent.putExtra(TransactionsRemoteViewsService.ACCOUNT_ID, accountId);
       intent.setData(Uri.parse(intent.toUri(Intent.URI_INTENT_SCHEME)));
 
       RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget_transactions);
-      if(accountId != -1) {
+      if(accountId != null) {
         rv.setRemoteAdapter(appWidgetId, R.id.widget_list, intent);
       } else {
         Log.e("Coinbase", "Could not get account ID for widget " + appWidgetId);
@@ -49,8 +46,6 @@ public class TransactionsAppWidgetProvider extends AppWidgetProvider {
 
       Log.i("Coinbase", "Updating transactions widget " + appWidgetId + " with balance " + balance);
       manager.updateAppWidget(appWidgetId, rv);
-
-      */
     }
 
   }

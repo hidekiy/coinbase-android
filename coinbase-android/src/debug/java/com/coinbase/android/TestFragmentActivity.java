@@ -4,9 +4,11 @@ import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.support.v4.app.FragmentTransaction;
 
+import com.github.rtyley.android.sherlock.roboguice.activity.RoboSherlockFragmentActivity;
+
 import roboguice.activity.RoboFragmentActivity;
 
-public class TestFragmentActivity<T extends Fragment> extends RoboFragmentActivity implements TransactionsFragment.Listener {
+public class TestFragmentActivity<T extends Fragment> extends RoboSherlockFragmentActivity implements TransactionsFragment.Listener {
   protected T testFragment;
   protected Class<T> clazz;
 

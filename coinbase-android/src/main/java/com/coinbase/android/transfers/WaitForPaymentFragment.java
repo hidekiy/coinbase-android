@@ -175,6 +175,7 @@ public class WaitForPaymentFragment extends RoboDialogFragment {
       return;
     }
 
+    // TODO API is giving null recipient here...
     // Ignore transactions with recipients other than us
     if (newTransaction.getRecipient() == null ||
             mLoginManager.getActiveUserId() != newTransaction.getRecipient().getId()) {

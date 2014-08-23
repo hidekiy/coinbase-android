@@ -132,7 +132,7 @@ public class TransferFragmentTest extends MockApiTest {
 
     assertTrue(getSolo().searchText("Waiting for payment"));
 
-    getSolo().sleep(2000);
+    getSolo().sleep(3000);
 
     Transaction mockReceivedTransaction = new Transaction();
     mockReceivedTransaction.setRequest(false);
@@ -169,7 +169,7 @@ public class TransferFragmentTest extends MockApiTest {
     getSolo().setActivityOrientation(Solo.LANDSCAPE);
     getInstrumentation().waitForIdleSync();
 
-    getSolo().sleep(2000);
+    getSolo().sleep(3000);
 
     Transaction mockReceivedTransaction = new Transaction();
     mockReceivedTransaction.setRequest(false);
@@ -204,7 +204,7 @@ public class TransferFragmentTest extends MockApiTest {
 
     assertTrue(getSolo().searchText("Waiting for payment"));
 
-    getSolo().sleep(2000);
+    getSolo().sleep(3000);
 
     Transaction mockReceivedTransaction = new Transaction();
     mockReceivedTransaction.setRequest(false);

@@ -29,11 +29,11 @@ public interface LoginManager {
 
   String getAccountValid();
 
-  // TODO remove methods that take context and use injected context
-
   String getActiveUserId();
 
   Coinbase getClient();
+
+  Coinbase getClient(String accountId);
 
   boolean isSignedIn();
 

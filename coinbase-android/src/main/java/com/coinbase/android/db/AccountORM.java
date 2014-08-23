@@ -66,7 +66,6 @@ public class AccountORM {
     values.put(COLUMN_ACCOUNT_ID, account.getId());
     values.put(COLUMN_NAME, account.getName());
 
-    // TODO throw exception if nothing updated
     db.update(
             TABLE_NAME,
             values,
@@ -97,7 +96,6 @@ public class AccountORM {
     ContentValues cv = new ContentValues();
     cv.put(COLUMN_RECEIVE_ADDRESS, receiveAddress);
 
-    // TODO throw exception if nothing updated
     db.update(
             TABLE_NAME,
             cv,
@@ -133,7 +131,6 @@ public class AccountORM {
     ContentValues cv = new ContentValues();
     cv.put(COLUMN_BALANCE, balance.getAmount().toPlainString());
 
-    // TODO throw exception if nothing updated
     db.update(
             TABLE_NAME,
             cv,
@@ -171,7 +168,6 @@ public class AccountORM {
     cv.put(COLUMN_NATIVE_BALANCE, balance.getAmount().toPlainString());
     cv.put(COLUMN_NATIVE_CURRENCY, balance.getCurrencyUnit().getCurrencyCode());
 
-    // TODO throw exception if nothing updated
     db.update(
             TABLE_NAME,
             cv,

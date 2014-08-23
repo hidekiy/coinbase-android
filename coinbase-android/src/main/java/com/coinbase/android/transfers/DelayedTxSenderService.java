@@ -6,7 +6,9 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
@@ -17,11 +19,13 @@ import com.coinbase.android.db.AccountORM;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
+import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.Account;
 import com.coinbase.api.entity.Transaction;
 import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
+import com.squareup.otto.Bus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +34,8 @@ import java.util.Random;
 import roboguice.service.RoboService;
 
 public class DelayedTxSenderService extends RoboService {
+  @Inject
+  private Bus mBus;
 
   @Inject
   private LoginManager mLoginManager;
@@ -93,7 +99,13 @@ public class DelayedTxSenderService extends RoboService {
         Log.e("DelayedTxSenderService", "Failed to send delayed tx", ex);
       }
 
-      // TODO Notify MainActivity so it can reload the transactions list.
+      Handler handler = new Handler(Looper.getMainLooper());
+      handler.post(new Runnable() {
+        @Override
+        public void run() {
+          mBus.post(new RefreshRequestedEvent());
+        }
+      });
 
       // Disable the broadcast receiver if all transactions were successfully sent.
       if (successfullySent == delayedTransactions.size()) {

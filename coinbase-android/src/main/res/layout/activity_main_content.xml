@@ -34,11 +34,9 @@
         android:id="@+id/fragment_merchanttools"
         class="com.coinbase.android.merchant.MerchantToolsFragment" />
 
-    <!-- TODO
     <fragment
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/fragment_pointofsale"
         class="com.coinbase.android.merchant.PointOfSaleFragment" />
-        -->
 </ViewFlipper>

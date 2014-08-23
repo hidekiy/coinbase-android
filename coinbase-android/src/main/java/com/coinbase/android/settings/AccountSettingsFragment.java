@@ -98,7 +98,6 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
       DialogFragment dialog = new ChangeNameDialogFragment();
       Bundle args = new Bundle();
       args.putString(InputTextDialogFragment.VALUE, getDisplayValue());
-      // TODO add title with i18n
       dialog.setArguments(args);
       dialog.show(getFragmentManager(), "change_name");
     }
@@ -113,7 +112,6 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
       DialogFragment dialog = new ChangeEmailDialogFragment();
       Bundle args = new Bundle();
       args.putString(InputTextDialogFragment.VALUE, getDisplayValue());
-      // TODO add title with i18n
       dialog.setArguments(args);
       dialog.show(getFragmentManager(), "change_email");
     }
@@ -125,7 +123,7 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
 
     @Override
     public String getDisplayValue() {
-      return getCachedValue(Constants.KEY_ACCOUNT_NAME);
+      return getCachedValue(Constants.KEY_ACCOUNT_EMAIL);
     }
   }
 
@@ -258,6 +256,15 @@ public class AccountSettingsFragment extends RoboListFragment implements Coinbas
               Utils.formatCurrencyAmount(getCachedValue(Constants.KEY_ACCOUNT_LIMIT_SELL, "0")),
               getCachedValue(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_SELL, "BTC")
       );
+    }
+
+    @Override
+    public void onClick() {
+      // Open browser
+      Intent i = new Intent(Intent.ACTION_VIEW);
+      i.addCategory(Intent.CATEGORY_BROWSABLE);
+      i.setData(Uri.parse("https://coinbase.com/verifications"));
+      startActivity(i);
     }
   }
 

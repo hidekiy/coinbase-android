@@ -20,7 +20,7 @@ import java.util.TimerTask;
 import roboguice.service.RoboService;
 
 public class TransactionPollingService extends RoboService {
-  private static final int POLLING_FREQUENCY_MILLIS = 2000;
+  private static final int POLLING_FREQUENCY_MILLIS = 3000;
   private static final int NOW = 0;
 
   private class PollingTask extends GetLatestTransactionsTask {

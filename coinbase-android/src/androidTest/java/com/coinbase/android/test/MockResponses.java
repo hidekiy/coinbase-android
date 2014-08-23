@@ -15,7 +15,6 @@ import com.coinbase.api.entity.Transaction;
 import com.coinbase.api.entity.TransactionsResponse;
 import com.coinbase.api.entity.Transfer;
 import com.coinbase.api.entity.User;
-import com.coinbase.api.entity.UserResponse;
 
 import org.joda.money.CurrencyUnit;
 import org.joda.money.Money;
@@ -213,7 +212,7 @@ public class MockResponses {
     result.setRecipient(mockCurrentUser());
     result.setRequest(false);
     result.setCreatedAt(DateTime.now());
-    result.setId("transId123"); // TODO this should be random
+    result.setId("transId123");
     result.setConfirmations(6);
     result.setStatus(Transaction.Status.COMPLETE);
 

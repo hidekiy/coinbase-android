@@ -7,7 +7,6 @@ import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,6 +17,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.coinbase.android.AccountsFragment;
 import com.coinbase.android.BuildConfig;
 import com.coinbase.android.BuildType;
 import com.coinbase.android.Constants;
@@ -28,7 +28,6 @@ import com.coinbase.android.Utils;
 import com.coinbase.android.event.SectionSelectedEvent;
 import com.coinbase.android.event.UserDataUpdatedEvent;
 import com.coinbase.api.LoginManager;
-import com.coinbase.api.entity.Account;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
@@ -179,7 +178,7 @@ public class SlidingDrawerFragment extends RoboFragment {
     TextView email = (TextView) mProfileView.findViewById(R.id.drawer_profile_account);
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-    String emailText = prefs.getString(Constants.KEY_ACCOUNT_NAME, "");
+    String emailText = prefs.getString(Constants.KEY_ACCOUNT_EMAIL, "");
     name.setText(prefs.getString(Constants.KEY_ACCOUNT_FULL_NAME, null));
 
     boolean emailChanged = !emailText.equals(email.getText().toString());
@@ -203,9 +202,7 @@ public class SlidingDrawerFragment extends RoboFragment {
 
         if(arg2 == 0) {
           // Switch account
-          /* TODO
           new AccountsFragment().show(getFragmentManager(), "accounts");
-          */
           return;
         }
 

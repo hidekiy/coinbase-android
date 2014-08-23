@@ -16,6 +16,7 @@ import android.widget.Toast;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
+import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.android.task.FetchTransactionTask;
 import com.coinbase.api.LoginManager;
@@ -23,12 +24,16 @@ import com.coinbase.api.entity.Transaction;
 import com.coinbase.api.entity.User;
 import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
+import com.squareup.otto.Bus;
 
 import roboguice.fragment.RoboFragment;
 import roboguice.inject.InjectResource;
 import roboguice.inject.InjectView;
 
 public class TransactionDetailsFragment extends RoboFragment {
+
+  @Inject
+  protected Bus mBus;
 
   @Inject
   protected LoginManager mLoginManager;
@@ -153,9 +158,7 @@ public class TransactionDetailsFragment extends RoboFragment {
       if (context instanceof TransactionDetailsActivity) {
         ((Activity) context).finish();
       } else {
-        /* TODO refresh and shit
-        ((MainActivity) getActivity()).refresh();
-        */
+        mBus.post(new RefreshRequestedEvent());
         ((TransactionsFragment) getParentFragment()).hideDetails(true);
       }
     }
@@ -205,9 +208,7 @@ public class TransactionDetailsFragment extends RoboFragment {
       if (context instanceof TransactionDetailsActivity) {
         ((Activity) context).finish();
       } else {
-        /* TODO refresh and shit
-        ((MainActivity) getActivity()).refresh();
-        */
+        mBus.post(new RefreshRequestedEvent());
         ((TransactionsFragment) getParentFragment()).hideDetails(true);
       }
     }
@@ -544,8 +545,7 @@ public class TransactionDetailsFragment extends RoboFragment {
 
     // Return to transactions list
     if (getActivity() instanceof MainActivity) {
-      ((MainActivity) getActivity()).refresh();
-      ((TransactionsFragment) getParentFragment()).loadTransactionsList();
+      mBus.post(new RefreshRequestedEvent());
       ((TransactionsFragment) getParentFragment()).hideDetails(true);
     } else {
       getActivity().finish();

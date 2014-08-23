@@ -31,7 +31,7 @@ class RefreshSettingsTask extends ApiTask<User> {
 
     SharedPreferences.Editor e = prefs.edit();
 
-    e.putString(Constants.KEY_ACCOUNT_NAME, user.getEmail());
+    e.putString(Constants.KEY_ACCOUNT_EMAIL, user.getEmail());
     e.putString(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, user.getNativeCurrency().getCurrencyCode());
     e.putString(Constants.KEY_ACCOUNT_FULL_NAME, user.getName());
     e.putString(Constants.KEY_ACCOUNT_TIME_ZONE, user.getTimeZone());

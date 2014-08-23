@@ -28,11 +28,13 @@ import com.actionbarsherlock.view.MenuItem;
 import com.coinbase.android.CoinbaseActivity.RequiresAuthentication;
 import com.coinbase.android.CoinbaseActivity.RequiresPIN;
 import com.coinbase.android.event.BuySellMadeEvent;
+import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.android.event.SectionSelectedEvent;
 import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.merchant.MerchantKioskHomeActivity;
 import com.coinbase.android.merchant.MerchantKioskModeService;
 import com.coinbase.android.merchant.MerchantToolsFragment;
+import com.coinbase.android.merchant.PointOfSaleFragment;
 import com.coinbase.android.pin.PINSettingDialogFragment;
 import com.coinbase.android.settings.AccountSettingsFragment;
 import com.coinbase.android.transfers.DelayedTxSenderService;
@@ -87,7 +89,7 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
   TransferFragment mTransferFragment;
   AccountSettingsFragment mSettingsFragment;
   MerchantToolsFragment mMerchantToolsFragment;
-  // TODO PointOfSaleFragment mPointOfSaleFragment;
+  PointOfSaleFragment mPointOfSaleFragment;
   OnSharedPreferenceChangeListener mSharedPreferenceChangeListener;
   DrawerLayout mSlidingMenu;
   ActionBarDrawerToggle mDrawerToggle;
@@ -219,10 +221,10 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
     } else if(fragment instanceof MerchantToolsFragment) {
       mFragments[FRAGMENT_INDEX_MERCHANT_TOOLS] = (CoinbaseFragment) fragment;
       mMerchantToolsFragment = (MerchantToolsFragment) fragment;
-    } /* TODO else if(fragment instanceof PointOfSaleFragment) {
+    } else if(fragment instanceof PointOfSaleFragment) {
       mFragments[FRAGMENT_INDEX_POINT_OF_SALE] = (CoinbaseFragment) fragment;
       mPointOfSaleFragment = (PointOfSaleFragment) fragment;
-    } */
+    }
   }
 
   @Override
@@ -551,7 +553,7 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
     // Flush any leftover delayed transactions
     startService(new Intent(this, DelayedTxSenderService.class));
 
-    /* TODO Legacy support:
+    /* TODO legacy support
     // If the old Point of Sale is enabled, show a dialog directing them to the Play Store
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
     int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
@@ -610,7 +612,7 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
           hideSlidingMenu(false);
         }
 
-        refresh();
+        mBus.post(new RefreshRequestedEvent());
         return true;
       case R.id.menu_help:
         Intent helpIntent = new Intent(Intent.ACTION_VIEW);
@@ -714,8 +716,7 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
        * Transaction details
        */
       if(resultCode == RESULT_OK) {
-        // Refresh needed
-        refresh();
+        mBus.post(new RefreshRequestedEvent());
       }
     } else if (requestCode == REQUEST_CODE_PIN && resultCode == RESULT_OK) {
       // PIN was successfully entered
@@ -770,17 +771,6 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
     }
   }
 
-  public void refresh() {
-    mLastRefreshTime = System.currentTimeMillis();
-
-    if (BuildConfig.type == BuildType.CONSUMER) {
-      mTransactionsFragment.refresh();
-      mSettingsFragment.refresh();
-    } else {
-      // TODO mPointOfSaleFragment.refresh();
-    }
-  }
-
   @Override
   public void onSendMoneyClicked() {
     openTransferMenu(false);
@@ -825,8 +815,6 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
 
   @Subscribe
   public void onBuySellMade(BuySellMadeEvent event) {
-    // TODO Animate insertion
     switchTo(FRAGMENT_INDEX_TRANSACTIONS);
   }
-
 }

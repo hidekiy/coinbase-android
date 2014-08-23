@@ -15,7 +15,6 @@ import roboguice.fragment.RoboDialogFragment;
 
 public abstract class InputTextDialogFragment extends RoboDialogFragment {
   public static final String VALUE = "InputTextDialogFragment_Input";
-  public static final String TITLE = "InputTextDialogFragment_Title";
 
   @Override
   public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -33,7 +32,7 @@ public abstract class InputTextDialogFragment extends RoboDialogFragment {
 
     AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getActivity());
     alertBuilder.setView(textDialogView);
-    alertBuilder.setTitle(getArguments().getString(TITLE));
+    alertBuilder.setTitle(getTitle());
     alertBuilder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
       @Override
       public void onClick(DialogInterface dialog, int which) {
@@ -55,5 +54,8 @@ public abstract class InputTextDialogFragment extends RoboDialogFragment {
   public abstract void onSubmit(String enteredValue);
   public void onCancel() {
     // Do nothing
+  }
+  public String getTitle() {
+    return null;
   }
 }

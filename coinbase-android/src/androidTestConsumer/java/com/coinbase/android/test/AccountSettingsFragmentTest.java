@@ -65,16 +65,12 @@ public class AccountSettingsFragmentTest extends MockApiTest {
     getSolo().waitForDialogToClose();
     assertTrue(getSolo().searchText("Merchant tools"));
     assertTrue(getSolo().searchText("Now separate app"));
-
-    // TODO Test that clicking takes us to external activity to download merchant app
   }
 
   public void testLimits() throws Exception {
     getSolo().waitForDialogToClose();
     assertTrue(getSolo().searchText("limits"));
     assertTrue(getSolo().searchText("Buy 3,000.00 USD per day, sell 3,000.00 USD per day"));
-
-    // TODO Test that clicking takes us to external activity to view limits
   }
 
   public void testPin() throws Exception {

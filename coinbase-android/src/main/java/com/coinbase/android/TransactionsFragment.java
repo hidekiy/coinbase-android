@@ -44,6 +44,8 @@ import com.coinbase.android.db.AccountORM;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
+import com.coinbase.android.event.BuySellMadeEvent;
+import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.android.event.TransactionsSyncedEvent;
 import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.task.ApiTask;
@@ -722,8 +724,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
             .listener(new OnRefreshListener() {
               @Override
               public void onRefreshStarted(View view) {
-                // TODO refresh things in other views too ?
-                refresh();
+                mBus.post(new RefreshRequestedEvent());
               }
             })
             .options(Options.create().headerTransformer(ht).build())
@@ -799,13 +800,6 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
     }
   }
 
-  // Refresh just account balance.
-  private void refreshBalance() {
-    mBalanceLoading = true;
-    mBalanceText.setTextColor(mParentActivity.getResources().getColor(R.color.wallet_balance_color_invalid));
-    // TODO new LoadJustBalanceTask().execute();
-  }
-
   private void updateBalance() {
     if (mBalanceBtc == null || mBalanceText == null) {
       return; // Not ready yet.
@@ -867,15 +861,13 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   public void insertTransactionAnimated(final int insertAtIndex, final TransactionListDisplayItem item) {
     if (!PlatformUtils.hasHoneycomb()) {
       // Do not play animation!
-      loadTransactionsList();
-      refreshBalance();
+      refresh();
       return;
     }
 
     mAnimationPlaying = true;
     getListView().setEnabled(false);
     setRateNoticeState(Constants.RateNoticeState.NOTICE_NOT_YET_SHOWN, false);
-    refreshBalance();
     getListView().post(new Runnable() {
       @Override
       public void run() {
@@ -1104,7 +1096,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   @Override
   public void onResume() {
     super.onResume();
-    // TODO maybe bind to transaction polling service here?
+    // TODO maybe bind to transaction polling service here in the future
     refresh();
   }
 
@@ -1123,6 +1115,17 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   @Subscribe
   public void animateTransaction(TransferMadeEvent transfer) {
     insertTransactionAnimated(0, new TransactionDisplayItem(transfer.transaction));
+  }
+
+  @Subscribe
+  public void animateBuySell(BuySellMadeEvent transfer) {
+    // TODO animate
+    refresh();
+  }
+
+  @Subscribe
+  public void onRefreshRequested(RefreshRequestedEvent event) {
+    refresh();
   }
 
   @Override

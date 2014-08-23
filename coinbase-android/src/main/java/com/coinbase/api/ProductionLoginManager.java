@@ -19,6 +19,7 @@ import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.api.entity.Account;
 import com.coinbase.api.entity.User;
 import com.coinbase.api.exception.CoinbaseException;
+import com.coinbase.api.exception.UnauthorizedException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
@@ -29,12 +30,15 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
-import org.joda.money.CurrencyUnit;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -158,7 +162,8 @@ public class ProductionLoginManager implements LoginManager {
       throw new RuntimeException(e);
     }
 
-    String scope = BuildConfig.type == BuildType.CONSUMER ? "all" : "merchant";
+    // TODO use merchant permissions on merchant build type
+    String scope = "all";
 
     String authorizeUrl = baseUrl + "?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + redirectUrl + "&scope=" + scope + "&meta[name]=" + device;
     return authorizeUrl;
@@ -194,7 +199,7 @@ public class ProductionLoginManager implements LoginManager {
       User user = getClient().getUser();
 
       e.putString(Constants.KEY_USER_ID, user.getId());
-      e.putString(Constants.KEY_ACCOUNT_NAME, user.getEmail());
+      e.putString(Constants.KEY_ACCOUNT_EMAIL, user.getEmail());
       e.putString(Constants.KEY_ACCOUNT_NATIVE_CURRENCY, user.getNativeCurrency().getCurrencyCode());
       e.putString(Constants.KEY_ACCOUNT_FULL_NAME, user.getName());
       e.putString(Constants.KEY_ACCOUNT_TIME_ZONE, user.getTimeZone());
@@ -295,24 +300,6 @@ public class ProductionLoginManager implements LoginManager {
   }
 
   @Override
-  public Coinbase getClient() {
-    return new CoinbaseBuilder()
-                .withAccessToken(getAccessToken())
-                .withAccountId(getActiveAccountId())
-                .withErrorHandler(new ErrorHandler() {
-                  @Override
-                  public void handleIOException(IOException ex, HttpURLConnection conn) throws IOException, CoinbaseException {
-                    if (HttpURLConnection.HTTP_UNAUTHORIZED == conn.getResponseCode()) {
-                      ProductionLoginManager.this.setAccountValid(false, "401 error");
-                      throw new IOException("Account is no longer valid");
-                    }
-                    super.handleIOException(ex, conn);
-                  }
-                })
-                .build();
-  }
-
-  @Override
   public String getReceiveAddress() {
     SQLiteDatabase db = dbManager.openDatabase();
     try {
@@ -342,5 +329,52 @@ public class ProductionLoginManager implements LoginManager {
     mContext.deleteDatabase(ClientCacheDatabase.DATABASE_NAME);
     SharedPreferences defaultPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
     defaultPreferences.edit().clear().commit();
+  }
+
+  @Override
+  public Coinbase getClient(String accountId) {
+    return (Coinbase) Proxy.newProxyInstance(
+            Coinbase.class.getClassLoader(),
+            new Class [] {Coinbase.class},
+            getCoinbaseHandler(accountId)
+    );
+  }
+
+  // Proxy all requests to coinbase to invalidate tokens on 401
+  @Override
+  public Coinbase getClient() {
+    return getClient(getActiveAccountId());
+  }
+
+  private class CoinbaseHandler implements InvocationHandler {
+    private Coinbase underlying;
+
+    public CoinbaseHandler(Coinbase underlying) {
+      this.underlying = underlying;
+    }
+
+    @Override
+    public Object invoke(Object o, Method method, Object[] args) throws Throwable {
+      Object result;
+      try {
+        result = method.invoke(underlying, args);
+      } catch (InvocationTargetException ex) {
+        if (ex.getTargetException() instanceof UnauthorizedException) {
+          setAccountValid(false, "401 error");
+        }
+        throw ex.getTargetException();
+      }
+      return result;
+    }
+  }
+
+  private InvocationHandler getCoinbaseHandler(String accountId) {
+    Coinbase underlying =
+          new CoinbaseBuilder()
+            .withAccessToken(getAccessToken())
+            .withAccountId(accountId)
+            .build();
+
+    return new CoinbaseHandler(underlying);
   }
 }

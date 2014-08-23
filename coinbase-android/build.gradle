@@ -28,7 +28,7 @@ dependencies {
     compile 'org.roboguice:roboguice:2.0'
     compile 'com.github.rtyley:roboguice-sherlock:1.5'
     compile 'com.android.support:support-v4:20.+'
-    compile ('com.coinbase.api:coinbase-java:1.2.0-SNAPSHOT')
+    compile ('com.coinbase.api:coinbase-java:1.2.0')
     compile ('org.apache.commons:commons-lang3:3.0' )
     compile project(":coinbase-zxing-android")
 

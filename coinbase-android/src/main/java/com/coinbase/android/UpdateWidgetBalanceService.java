@@ -14,6 +14,8 @@ import com.coinbase.api.entity.Account;
 import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
 
+import org.joda.money.Money;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -42,8 +44,8 @@ public class UpdateWidgetBalanceService extends RoboService {
 
         try {
 
-          int accountId = PreferenceManager.getDefaultSharedPreferences(UpdateWidgetBalanceService.this).getInt(
-              String.format(Constants.KEY_WIDGET_ACCOUNT, widgetId), -1);
+          String accountId = PreferenceManager.getDefaultSharedPreferences(UpdateWidgetBalanceService.this).getString(
+                  String.format(Constants.KEY_WIDGET_ACCOUNT, widgetId), null);
 
 
           // Step 1: Update widget without balance
@@ -52,23 +54,18 @@ public class UpdateWidgetBalanceService extends RoboService {
           updater.updateWidget(UpdateWidgetBalanceService.this, manager, widgetId, null);
 
           // Step 2: Fetch balance for primary account
-          String balance;
-          if(accountId == -1) {
-            balance = "";
+          String balanceText;
+          if(accountId == null) {
+            balanceText = "";
           } else {
-            balance = "";
+            balanceText = "";
             Log.i("Coinbase", "Service fetching balance... [" + updaterClass.getSimpleName() + "]");
-            Coinbase client = mLoginManager.getClient();
-            List<Account> subAccounts = client.getAccounts().getAccounts();
-            for (Account subAccount : subAccounts) {
-              if (subAccount.isPrimary()) {
-                balance = Utils.formatCurrencyAmount(subAccount.getBalance().getAmount());
-              }
-            }
+            Money balance = mLoginManager.getClient(accountId).getBalance();
+            balanceText = Utils.formatMoney(balance);
           }
 
           // Step 3: Update widget
-          updater.updateWidget(UpdateWidgetBalanceService.this, manager, widgetId, balance);
+          updater.updateWidget(UpdateWidgetBalanceService.this, manager, widgetId, balanceText);
 
         } catch(CoinbaseException e) {
           e.printStackTrace();
