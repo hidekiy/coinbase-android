@@ -214,4 +214,8 @@ public class AccountORM {
       return null;
     }
   }
+
+  public static long clear(SQLiteDatabase db) {
+    return db.delete(TABLE_NAME, null, null);
+  }
 }

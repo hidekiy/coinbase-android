@@ -589,7 +589,11 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     if(mTransferTypeView != null) {
       switchType(TransferType.SEND);
       mTransferCurrencyView.setSelection(1); // BTC is always second
-      mAmountView.setText(amount.stripTrailingZeros().toPlainString());
+      if (amount != null) {
+        mAmountView.setText(amount.stripTrailingZeros().toPlainString());
+      } else {
+        mAmountView.setText(null);
+      }
       mNotesView.setText(message);
       mRecipientView.setText(address);
     }

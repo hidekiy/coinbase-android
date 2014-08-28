@@ -1,8 +1,8 @@
 package com.coinbase.android;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import android.app.Application;
+
+import com.coinbase.android.settings.PreferenceUpgrade;
 
 import org.acra.ACRA;
 import org.acra.ReportField;
@@ -17,7 +17,9 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 
-import android.app.Application;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 @ReportsCrashes(formKey="5b40afa9b96001a24044042515098fc0")
 public class CoinbaseApplication extends Application {
@@ -71,8 +73,8 @@ public class CoinbaseApplication extends Application {
   public void onCreate() {
     ACRA.init(this);
     ACRA.getErrorReporter().setReportSender(new ACRAHockeyAppSender());
-
     super.onCreate();
+    PreferenceUpgrade.perform(this);
   }
 
   private List<MainActivity> mMainActivities = new ArrayList<MainActivity>();

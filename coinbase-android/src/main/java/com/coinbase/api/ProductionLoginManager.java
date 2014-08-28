@@ -315,7 +315,7 @@ public class ProductionLoginManager implements LoginManager {
     return prefs.getString(Constants.KEY_ACTIVE_ACCOUNT_ID, null);
   }
 
-  private String getAccessToken() {
+  private synchronized String getAccessToken() {
     if (needToRefreshAccessToken()) {
       refreshAccessToken();
     }
