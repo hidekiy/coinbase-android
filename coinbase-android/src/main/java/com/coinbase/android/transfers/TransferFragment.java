@@ -10,7 +10,6 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.DialogFragment;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,13 +27,14 @@ import android.widget.Toast;
 import com.coinbase.android.CoinbaseFragment;
 import com.coinbase.android.Constants;
 import com.coinbase.android.FontManager;
-import com.coinbase.android.event.AccountsDataUpdatedEvent;
-import com.coinbase.android.event.TransferMadeEvent;
-import com.coinbase.android.task.GenerateReceiveAddressTask;
+import com.coinbase.android.Log;
 import com.coinbase.android.PlatformUtils;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;
+import com.coinbase.android.event.AccountsDataUpdatedEvent;
+import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.pin.PINManager;
+import com.coinbase.android.task.GenerateReceiveAddressTask;
 import com.coinbase.android.util.BitcoinUri;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.Transaction;
@@ -56,10 +56,6 @@ import java.util.Map;
 import roboguice.fragment.RoboFragment;
 import roboguice.inject.InjectResource;
 import roboguice.inject.InjectView;
-
-import static java.lang.Math.max;
-import static java.lang.Math.min;
-import static java.lang.Math.round;
 
 public class TransferFragment extends RoboFragment implements CoinbaseFragment {
   public enum TransferType {

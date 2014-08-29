@@ -6,18 +6,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
-import com.coinbase.api.Coinbase;
 import com.coinbase.api.LoginManager;
-import com.coinbase.api.entity.Account;
 import com.coinbase.api.exception.CoinbaseException;
 import com.google.inject.Inject;
 
 import org.joda.money.Money;
 
 import java.io.IOException;
-import java.util.List;
 
 import roboguice.service.RoboService;
 

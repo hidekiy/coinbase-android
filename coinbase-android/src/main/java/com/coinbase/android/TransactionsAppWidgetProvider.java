@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.widget.RemoteViews;
 
 import com.coinbase.android.UpdateWidgetBalanceService.WidgetUpdater;
@@ -22,7 +21,7 @@ public class TransactionsAppWidgetProvider extends AppWidgetProvider {
     @Override
     public void updateWidget(Context context, AppWidgetManager manager, int appWidgetId, String balance) {
       String accountId = PreferenceManager.getDefaultSharedPreferences(context).getString(
-          String.format(Constants.KEY_WIDGET_ACCOUNT, appWidgetId), null);
+              String.format(Constants.KEY_WIDGET_ACCOUNT, appWidgetId), null);
       Intent intent = new Intent(context, TransactionsRemoteViewsService.class);
       intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
       intent.putExtra(TransactionsRemoteViewsService.ACCOUNT_ID, accountId);

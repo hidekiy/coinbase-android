@@ -3,10 +3,10 @@ package com.coinbase.android.transfers;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
-import android.util.Log;
 
-import com.coinbase.android.task.GetLatestTransactionsTask;
+import com.coinbase.android.Log;
 import com.coinbase.android.event.NewTransactionEvent;
+import com.coinbase.android.task.GetLatestTransactionsTask;
 import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;

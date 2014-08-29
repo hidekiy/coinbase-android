@@ -4,9 +4,9 @@ import android.app.Application;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
 import com.coinbase.android.Constants;
+import com.coinbase.android.Log;
 import com.coinbase.android.db.AccountORM;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.api.LoginManager;
