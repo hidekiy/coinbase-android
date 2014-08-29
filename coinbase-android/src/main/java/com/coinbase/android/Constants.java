@@ -43,5 +43,6 @@ public class Constants {
   public static final String KEY_ACCOUNT_PIN = "account_pin";
   public static final String KEY_ACCOUNT_LAST_PIN_ENTRY_TIME = "account_last_pin_entry_time";
   public static final String KEY_ACCOUNT_PIN_VIEW_ALLOWED = "account_pin_view_allowed";
+  public static final String KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS = "account_enable_merchant_tools";
 
 }

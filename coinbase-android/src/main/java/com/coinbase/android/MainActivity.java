@@ -553,15 +553,11 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
     // Flush any leftover delayed transactions
     startService(new Intent(this, DelayedTxSenderService.class));
 
-    /* TODO legacy support
     // If the old Point of Sale is enabled, show a dialog directing them to the Play Store
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-    int activeAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
-    String key = String.format(Constants.KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS, activeAccount);
-    if (prefs.getBoolean(key, false)) {
+    if (prefs.getBoolean(Constants.KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS, false)) {
       new MerchantToolsMovedDialogFragment().show(getSupportFragmentManager(), "poslegacy");
     }
-    */
   }
 
   @Override

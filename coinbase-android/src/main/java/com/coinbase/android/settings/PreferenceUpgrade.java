@@ -48,6 +48,7 @@ public class PreferenceUpgrade {
   public static final String KEY_ACCOUNT_PIN_VIEW_ALLOWED = "account_%d_pin_view_allowed";
 
   public static final String KEY_ACCOUNT_ID = "account_%d_id";
+  public static final String KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS = "account_%d_enable_merchant_tools";
 
   public static void perform(Application context) {
     Log.i("PreferenceUpgrade", "In perform");
@@ -84,6 +85,7 @@ public class PreferenceUpgrade {
       upgradeBoolean(prefs, KEY_ACCOUNT_PIN_VIEW_ALLOWED, activeAccountIndex, Constants.KEY_ACCOUNT_PIN_VIEW_ALLOWED);
       upgradeString(prefs, KEY_ACCOUNT_NATIVE_CURRENCY, activeAccountIndex, Constants.KEY_ACCOUNT_NATIVE_CURRENCY);
       upgradeString(prefs, KEY_ACCOUNT_ID, activeAccountIndex, Constants.KEY_USER_ID);
+      upgradeBoolean(prefs, KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS, activeAccountIndex, Constants.KEY_ACCOUNT_ENABLE_MERCHANT_TOOLS);
 
       String buyLimitKey = String.format(KEY_ACCOUNT_LIMIT, activeAccountIndex, "buy");
       String sellLimitKey = String.format(KEY_ACCOUNT_LIMIT, activeAccountIndex, "sell");

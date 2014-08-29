@@ -28,6 +28,7 @@ import android.widget.Toast;
 import com.coinbase.android.CoinbaseFragment;
 import com.coinbase.android.Constants;
 import com.coinbase.android.FontManager;
+import com.coinbase.android.event.AccountsDataUpdatedEvent;
 import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.task.GenerateReceiveAddressTask;
 import com.coinbase.android.PlatformUtils;
@@ -273,7 +274,6 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     });
 
     onTypeChanged();
-    // TODO listen to account data change event to refresh currency spinner
   }
 
   private void submitSend() {
@@ -539,6 +539,7 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     };
     arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
     mTransferCurrencyView.setAdapter(arrayAdapter);
+    onCurrencyChanged();
   }
 
   private void onTypeChanged() {
@@ -676,5 +677,10 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
   @Subscribe
   public void onTransferMade(TransferMadeEvent event) {
     clearForm();
+  }
+
+  @Subscribe
+  public void onAccountsDataUpdated(AccountsDataUpdatedEvent event) {
+    initializeCurrencySpinner();
   }
 }
