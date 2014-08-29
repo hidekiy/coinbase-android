@@ -39,7 +39,7 @@ public class AccountsFragment extends RoboDialogFragment {
     final String[] accountNames = new String[accounts.size()];
 
     for (int i = 0; i < accounts.size(); ++i) {
-      if (activeAccountId == accounts.get(i).getId()) {
+      if (accounts.get(i).getId().equals(activeAccountId)) {
         selectedIndex = i;
       }
       accountNames[i] = accounts.get(i).getName();
