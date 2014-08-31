@@ -121,7 +121,7 @@ public class DelayedTxSenderService extends RoboService {
   private void showNotification(String errors, Transaction tx) {
     String title, description;
 
-    if (errors != null) {
+    if (errors == null) {
       if (tx.isRequest()) {
         title = getString(R.string.delayed_notification_success_request);
       } else {

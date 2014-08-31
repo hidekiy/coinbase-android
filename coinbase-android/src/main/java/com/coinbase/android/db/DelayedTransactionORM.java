@@ -26,6 +26,7 @@ public class DelayedTransactionORM implements BaseColumns {
   public static final String COLUMN_TO = "tx_to";
   public static final String COLUMN_IS_REQUEST = "is_request";
   public static final String COLUMN_NOTES = "notes";
+  public static final String COLUMN_IDEM = "idem";
   public static final String COLUMN_CREATED_AT = "created_at";
 
   private static final String COMMA_SEP = ", ";
@@ -43,6 +44,7 @@ public class DelayedTransactionORM implements BaseColumns {
                   COLUMN_TO                + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_IS_REQUEST        + INTEGER_TYPE + COMMA_SEP +
                   COLUMN_NOTES             + TEXT_TYPE    + COMMA_SEP +
+                  COLUMN_IDEM              + TEXT_TYPE    + COMMA_SEP +
                   COLUMN_CREATED_AT        + INTEGER_TYPE +
                   ")";
 
@@ -69,6 +71,8 @@ public class DelayedTransactionORM implements BaseColumns {
 
     values.put(COLUMN_IS_REQUEST, tx.isRequest() ? 1 : 0);
 
+    values.put(COLUMN_IDEM, tx.getIdem());
+
     return values;
   }
 
@@ -91,6 +95,8 @@ public class DelayedTransactionORM implements BaseColumns {
     result.setNotes(c.getString(c.getColumnIndex(COLUMN_NOTES)));
 
     result.setRequest(c.getInt(c.getColumnIndex(COLUMN_IS_REQUEST)) != 0);
+
+    result.setIdem(c.getString(c.getColumnIndex(COLUMN_IDEM)));
 
     return result;
   }

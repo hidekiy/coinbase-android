@@ -1,19 +1,14 @@
 package com.coinbase.android.transfers;
 
-import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 
-import com.coinbase.android.MainActivity;
 import com.coinbase.android.R;
-import com.coinbase.android.TransactionsFragment;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
@@ -22,8 +17,8 @@ import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
 
 import org.joda.time.DateTime;
-import org.json.JSONException;
-import org.json.JSONObject;
+
+import java.util.UUID;
 
 import roboguice.fragment.RoboDialogFragment;
 
@@ -57,6 +52,7 @@ public class DelayedTransactionDialogFragment extends RoboDialogFragment {
               @Override
               public void onClick(DialogInterface dialogInterface, int i) {
                 mTransaction.setCreatedAt(DateTime.now());
+                mTransaction.setIdem(UUID.randomUUID().toString());
 
                 SQLiteDatabase db = mDbManager.openDatabase();
                 try {
