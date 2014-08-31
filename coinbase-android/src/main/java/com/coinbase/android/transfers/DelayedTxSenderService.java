@@ -69,35 +69,34 @@ public class DelayedTxSenderService extends RoboService {
     List<Transaction> delayedTransactions = new ArrayList<Transaction>();
     SQLiteDatabase db = mDbManager.openDatabase();
     try {
+      db.beginTransaction();
       List<Account> accounts = AccountORM.list(db);
       for (Account account : accounts) {
         delayedTransactions.addAll(DelayedTransactionORM.getTransactions(db, account.getId()));
       }
-    } finally {
-      mDbManager.closeDatabase();
-    }
 
-    // Attempt to send the delayed TX:
-    Log.i("Coinbase", "Sending " + delayedTransactions.size() + " delayed TX now...");
-    int successfullySent = 0;
-    for (Transaction tx : delayedTransactions) {
-
-      try {
-        if (tx.isRequest()) {
-          mLoginManager.getClient().requestMoney(tx);
-        } else {
-          mLoginManager.getClient().sendMoney(tx);
+      // Attempt to send the delayed TX:
+      Log.i("Coinbase", "Sending " + delayedTransactions.size() + " delayed TX now...");
+      int successfullySent = 0;
+      for (Transaction tx : delayedTransactions) {
+        try {
+          if (tx.isRequest()) {
+            mLoginManager.getClient().requestMoney(tx);
+          } else {
+            mLoginManager.getClient().sendMoney(tx);
+          }
+          successfullySent++;
+          showNotification(null, tx);
+          DelayedTransactionORM.delete(db, tx);
+        } catch (CoinbaseException cbEx) {
+          Log.e("DelayedTxSenderService", "Failed to send delayed tx", cbEx);
+          showNotification(cbEx.getMessage(), tx);
+        } catch (Exception ex) {
+          Log.e("DelayedTxSenderService", "Failed to send delayed tx", ex);
         }
-
-        successfullySent++;
-        showNotification(null, tx);
-        deleteDelayedTransaction(tx);
-      } catch (CoinbaseException cbEx) {
-        Log.e("DelayedTxSenderService", "Failed to send delayed tx", cbEx);
-        showNotification(cbEx.getMessage(), tx);
-      } catch (Exception ex) {
-        Log.e("DelayedTxSenderService", "Failed to send delayed tx", ex);
       }
+
+      db.setTransactionSuccessful();
 
       Handler handler = new Handler(Looper.getMainLooper());
       handler.post(new Runnable() {
@@ -113,6 +112,9 @@ public class DelayedTxSenderService extends RoboService {
         ComponentName br = new ComponentName(this, ConnectivityChangeReceiver.class);
         pm.setComponentEnabledSetting(br, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
       }
+    } finally {
+      db.endTransaction();
+      mDbManager.closeDatabase();
     }
   }
 
@@ -154,14 +156,5 @@ public class DelayedTxSenderService extends RoboService {
       NOTIF_ID = new Random().nextInt();
     }
     mNotificationManager.notify(NOTIF_ID++, mBuilder.build());
-  }
-
-  private void deleteDelayedTransaction(Transaction tx) {
-    SQLiteDatabase db = mDbManager.openDatabase();
-    try {
-      DelayedTransactionORM.delete(db, tx);
-    } finally {
-      mDbManager.closeDatabase();
-    }
   }
 }
