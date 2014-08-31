@@ -44,6 +44,7 @@ import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
 import com.coinbase.android.db.TransactionORM;
 import com.coinbase.android.event.BuySellMadeEvent;
+import com.coinbase.android.event.NewDelayedTransactionEvent;
 import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.android.event.TransactionsSyncedEvent;
 import com.coinbase.android.event.TransferMadeEvent;
@@ -1114,6 +1115,11 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
   @Subscribe
   public void animateTransaction(TransferMadeEvent transfer) {
     insertTransactionAnimated(0, new TransactionDisplayItem(transfer.transaction));
+  }
+
+  @Subscribe
+  public void animateDelayedTransaction(NewDelayedTransactionEvent event) {
+    insertTransactionAnimated(0, new DelayedTransactionDisplayItem(event.transaction));
   }
 
   @Subscribe

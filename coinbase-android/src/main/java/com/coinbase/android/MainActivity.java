@@ -27,6 +27,7 @@ import com.actionbarsherlock.view.MenuItem;
 import com.coinbase.android.CoinbaseActivity.RequiresAuthentication;
 import com.coinbase.android.CoinbaseActivity.RequiresPIN;
 import com.coinbase.android.event.BuySellMadeEvent;
+import com.coinbase.android.event.NewDelayedTransactionEvent;
 import com.coinbase.android.event.RefreshRequestedEvent;
 import com.coinbase.android.event.SectionSelectedEvent;
 import com.coinbase.android.event.TransferMadeEvent;
@@ -805,6 +806,11 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
 
   @Subscribe
   public void onTransferMade(TransferMadeEvent event) {
+    switchTo(FRAGMENT_INDEX_TRANSACTIONS);
+  }
+
+  @Subscribe
+  public void onNewDelayedTransaction(NewDelayedTransactionEvent event) {
     switchTo(FRAGMENT_INDEX_TRANSACTIONS);
   }
 

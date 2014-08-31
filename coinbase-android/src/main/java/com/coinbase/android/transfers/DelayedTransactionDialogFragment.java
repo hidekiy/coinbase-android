@@ -11,10 +11,11 @@ import android.os.Bundle;
 import com.coinbase.android.R;
 import com.coinbase.android.db.DatabaseManager;
 import com.coinbase.android.db.DelayedTransactionORM;
-import com.coinbase.android.db.TransactionORM;
+import com.coinbase.android.event.NewDelayedTransactionEvent;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
+import com.squareup.otto.Bus;
 
 import org.joda.time.DateTime;
 
@@ -36,6 +37,9 @@ public class DelayedTransactionDialogFragment extends RoboDialogFragment {
 
   @Inject
   private LoginManager mLoginManager;
+
+  @Inject
+  private Bus mBus;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -61,21 +65,12 @@ public class DelayedTransactionDialogFragment extends RoboDialogFragment {
                   mDbManager.closeDatabase();
                 }
 
+                mBus.post(new NewDelayedTransactionEvent(mTransaction));
+
                 // Enable broadcast receiver
                 PackageManager pm = getActivity().getPackageManager();
                 pm.setComponentEnabledSetting(new ComponentName(getActivity(), ConnectivityChangeReceiver.class),
                         PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
-
-                /* TODO switch to transfers and animate
-
-                MainActivity parent = ((MainActivity) getActivity());
-                parent.getTransferFragment().clearForm();
-                TransactionsFragment transactionsFragment = parent.getTransactionsFragment();
-                JSONObject json = delayedTransaction.createTransaction(getActivity());
-                transactionsFragment.insertTransactionAnimated(0, json, delayedTransaction.getCategory(), "delayed");
-                parent.switchTo(MainActivity.FRAGMENT_INDEX_TRANSACTIONS);
-
-                */
               }
             })
             .setNegativeButton(R.string.delayed_tx_dialog_cancel, new DialogInterface.OnClickListener() {

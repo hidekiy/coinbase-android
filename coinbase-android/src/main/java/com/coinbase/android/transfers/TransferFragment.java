@@ -32,6 +32,7 @@ import com.coinbase.android.PlatformUtils;
 import com.coinbase.android.R;
 import com.coinbase.android.Utils;
 import com.coinbase.android.event.AccountsDataUpdatedEvent;
+import com.coinbase.android.event.NewDelayedTransactionEvent;
 import com.coinbase.android.event.TransferMadeEvent;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.android.task.GenerateReceiveAddressTask;
@@ -672,6 +673,11 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
 
   @Subscribe
   public void onTransferMade(TransferMadeEvent event) {
+    clearForm();
+  }
+
+  @Subscribe
+  public void onNewDelayedTransaction(NewDelayedTransactionEvent event) {
     clearForm();
   }
 
