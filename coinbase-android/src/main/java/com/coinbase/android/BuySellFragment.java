@@ -350,8 +350,8 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
     final SpannableStringBuilder targetText = new SpannableStringBuilder(base);
     if (quote != null) {
       String formatString = mBuySellTypePrice;
-      String price = Utils.formatMoney(quote.getSubtotal());
-      targetText.append(' ').append(String.format(formatString, price));
+      String price = String.format(formatString, Utils.formatMoney(quote.getSubtotal()));
+      targetText.append(' ').append(price);
       targetText.setSpan(new CustomTypefaceSpan("sans-serift", light), base.length(), base.length() + price.length() + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
