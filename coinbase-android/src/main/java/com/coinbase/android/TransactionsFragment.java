@@ -107,7 +107,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       int numPages = 1; // Real value will be set after first list iteration
       int loadedPage = startPage;
 
-      AccountChangesResponse response = getClient().getAccountChanges(loadedPage);
+      AccountChangesResponse response = getClient().getAccountChanges(loadedPage + 1);
 
       // Update balance
       // (we do it here to update the balance ASAP.)
