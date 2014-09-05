@@ -40,7 +40,7 @@ public class PINPromptActivity extends CoinbaseActivity implements AccountsFragm
   private GridView mKeyboard = null;
 
   @Override
-  public void onCreate(Bundle arg0) {
+  protected void onCreate(Bundle arg0) {
     super.onCreate(arg0);
 
     mIsSetMode = ACTION_SET.equals(getIntent().getAction());

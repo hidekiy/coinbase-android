@@ -4,7 +4,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import com.coinbase.android.Log;
+import android.util.Log;
 
 /**
  * Proxy all database calls through this class so that only one instance of

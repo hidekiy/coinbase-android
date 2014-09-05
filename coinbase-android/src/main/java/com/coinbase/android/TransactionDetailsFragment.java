@@ -13,9 +13,7 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.Html;
-
-import com.bugsnag.android.Bugsnag;
-import com.coinbase.android.Log;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,6 +26,7 @@ import com.coinbase.android.db.TransactionsDatabase.TransactionEntry;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.api.RpcManager;
 
+import org.acra.ACRA;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -166,7 +165,7 @@ public class TransactionDetailsFragment extends Fragment {
       try {
         return RpcManager.getInstance().callGet(getActivity(), "transactions/" + mId).getJSONObject("transaction");
       } catch (JSONException e) {
-        Bugsnag.notify(new RuntimeException("LoadTransactionFromInternet", e));
+        ACRA.getErrorReporter().handleException(new RuntimeException("LoadTransactionFromInternet", e));
         e.printStackTrace();
       } catch (IOException e) {
         e.printStackTrace();

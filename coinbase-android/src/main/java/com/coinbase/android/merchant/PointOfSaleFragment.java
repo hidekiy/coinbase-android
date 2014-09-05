@@ -22,7 +22,7 @@ import android.text.Html;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.util.DisplayMetrics;
-import com.coinbase.android.Log; 
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -283,13 +283,11 @@ public class PointOfSaleFragment extends Fragment implements CoinbaseFragment {
         if(response.optJSONObject("order") != null) {
 
           mOrder = response.optJSONObject("order");
-          // If the order is "new", payment has yet to be received
-          if (!"new".equals(mOrder.optString("status"))) {
-            return CheckStatusState.DONE;
-          }
-        }
+          return CheckStatusState.DONE;
+        } else {
           // Successful check, but the order isn't in yet.
-        return CheckStatusState.SUCCESS;
+          return CheckStatusState.SUCCESS;
+        }
 
       } catch (Exception e) {
         // Check was a failure - make sure to alert the user.

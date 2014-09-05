@@ -1,7 +1,7 @@
 package com.coinbase.android.delayedtx;
 
 import android.content.Context;
-import com.coinbase.android.Log;
+import android.util.Log;
 
 import com.coinbase.android.Constants;
 import com.coinbase.android.ISO8601;

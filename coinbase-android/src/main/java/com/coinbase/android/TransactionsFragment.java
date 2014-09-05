@@ -26,9 +26,7 @@ import android.support.v4.widget.CursorAdapter;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.text.Html;
 import android.util.DisplayMetrics;
-
-import com.bugsnag.android.Bugsnag;
-import com.coinbase.android.Log;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,6 +53,7 @@ import com.nineoldandroids.animation.Animator;
 import com.nineoldandroids.animation.AnimatorSet;
 import com.nineoldandroids.animation.ObjectAnimator;
 
+import org.acra.ACRA;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -215,7 +214,7 @@ public class TransactionsFragment extends ListFragment implements CoinbaseFragme
       } catch (JSONException e) {
         // Malformed response from Coinbase.
         Log.e("Coinbase", "Could not parse JSON response from Coinbase, aborting refresh of transactions.");
-        Bugsnag.notify(new RuntimeException("SyncTransactions", e));
+        ACRA.getErrorReporter().handleException(new RuntimeException("SyncTransactions", e));
         e.printStackTrace();
 
         return false;
@@ -812,7 +811,7 @@ public class TransactionsFragment extends ListFragment implements CoinbaseFragme
       mBalanceHome.setText(String.format(mParent.getString(R.string.wallet_balance_home), mBalanceNative, mCurrencyNative));
     } catch (Exception e) {
       e.printStackTrace();
-      Bugsnag.notify(new RuntimeException("updateBalance()", e));
+      ACRA.getErrorReporter().handleException(new RuntimeException("updateBalance()", e));
     }
   }
 
@@ -840,7 +839,7 @@ public class TransactionsFragment extends ListFragment implements CoinbaseFragme
 
     if(pinned) {
       mMainView.addView(mListHeader, 0);
-      Log.d("Coinbase","Main view has " + mMainView.getChildCount());
+      System.out.println("Main view has " + mMainView.getChildCount());
     } else {
       mListHeaderContainer.addView(mListHeader);
     }

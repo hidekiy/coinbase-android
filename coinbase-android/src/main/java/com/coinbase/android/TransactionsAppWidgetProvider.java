@@ -9,7 +9,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import com.coinbase.android.Log;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import com.coinbase.android.UpdateWidgetBalanceService.WidgetUpdater;

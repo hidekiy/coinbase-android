@@ -16,9 +16,7 @@ import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.TextWatcher;
-
-import com.bugsnag.android.Bugsnag;
-import com.coinbase.android.Log;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -39,6 +37,7 @@ import com.coinbase.android.Utils.CurrencyType;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.api.RpcManager;
 
+import org.acra.ACRA;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -216,7 +215,7 @@ public class TransferFragment extends Fragment implements CoinbaseFragment {
       } catch (IOException e) {
         e.printStackTrace();
       } catch (JSONException e) {
-        Bugsnag.notify(new RuntimeException("RefreshExchangeRate", e));
+        ACRA.getErrorReporter().handleException(new RuntimeException("RefreshExchangeRate", e));
         e.printStackTrace();
       }
 
@@ -928,7 +927,7 @@ public class TransferFragment extends Fragment implements CoinbaseFragment {
     } catch (IOException e) {
       e.printStackTrace();
     } catch (JSONException e) {
-      Bugsnag.notify(new RuntimeException("doTransfer", e));
+      ACRA.getErrorReporter().handleException(new RuntimeException("doTransfer", e));
       e.printStackTrace();
     }
 

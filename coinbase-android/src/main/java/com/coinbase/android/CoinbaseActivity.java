@@ -4,10 +4,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 import android.content.Intent;
-import android.os.Bundle;
 
 import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.bugsnag.android.Bugsnag;
 import com.coinbase.android.pin.PINManager;
 import com.coinbase.android.pin.PINPromptActivity;
 import com.coinbase.api.LoginManager;
@@ -23,28 +21,9 @@ public class CoinbaseActivity extends SherlockFragmentActivity {
   public static @interface RequiresPIN { }
 
   @Override
-  public void onPause() {
-    super.onPause();
-    Bugsnag.onActivityPause(this);
-  }
-
-  @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    Bugsnag.onActivityCreate(this);
-  }
-
-  @Override
-  public void onDestroy() {
-    super.onDestroy();
-    Bugsnag.onActivityDestroy(this);
-  }
-
-  @Override
   public void onResume() {
 
     super.onResume();
-    Bugsnag.onActivityResume(this);
 
     if(getClass().isAnnotationPresent(RequiresAuthentication.class)) {
       // Check authentication status
