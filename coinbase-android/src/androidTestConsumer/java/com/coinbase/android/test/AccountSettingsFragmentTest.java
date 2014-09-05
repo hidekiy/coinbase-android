@@ -129,6 +129,6 @@ public class AccountSettingsFragmentTest extends MockApiTest {
     assertTrue(getSolo().searchText(mockAddressesResponse().getAddresses().get(0).getAddress()));
     getSolo().clickOnText("Bitcoin address");
     getSolo().sleep(1000);
-    assertEquals("ReceiveAddressesActivity", getSolo().getCurrentActivity().getLocalClassName());
+    assertTrue(getSolo().getCurrentActivity().getLocalClassName().contains("ReceiveAddressesActivity"));
   }
 }
