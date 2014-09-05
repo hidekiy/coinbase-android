@@ -39,6 +39,7 @@ import com.google.zxing.WriterException;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
+import org.joda.money.BigMoney;
 import org.joda.money.Money;
 
 import roboguice.fragment.RoboDialogFragment;
@@ -175,17 +176,15 @@ public class WaitForPaymentFragment extends RoboDialogFragment {
       return;
     }
 
-    // TODO API is giving null recipient here...
-    // Ignore transactions with recipients other than us
-    if (newTransaction.getRecipient() == null ||
-            mLoginManager.getActiveUserId() != newTransaction.getRecipient().getId()) {
-      return;
-    }
-
     // We've received btc at this point
     Money transactionAmount = newTransaction.getAmount();
 
-    if (transactionAmount.compareTo(mAmount) != 0) {
+    // Ignore transactions where amount is negative (we are looking for incoming txs)
+    if (transactionAmount.compareTo(BigMoney.parse("BTC 0")) == -1) {
+      return;
+    }
+
+    if (mAmount != null && transactionAmount.compareTo(mAmount) != 0) {
       mStatus.setText(String.format(
               mPaymentReceivedInvalidFormatString,
               Utils.formatMoney(transactionAmount),
@@ -193,7 +192,7 @@ public class WaitForPaymentFragment extends RoboDialogFragment {
       ));
       mIcon.setImageResource(R.drawable.ic_payment_error);
     } else {
-      if (mNativeAmount.getCurrencyUnit().equals(mAmount.getCurrencyUnit())) {
+      if (mAmount == null || mNativeAmount.getCurrencyUnit().equals(mAmount.getCurrencyUnit())) {
         mStatus.setText(String.format(
                 mPaymentReceivedFormatString,
                 Utils.formatMoney(transactionAmount)
