@@ -58,7 +58,6 @@ import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
-import org.acra.ACRA;
 import org.joda.money.Money;
 import java.util.ArrayList;
 import java.util.List;

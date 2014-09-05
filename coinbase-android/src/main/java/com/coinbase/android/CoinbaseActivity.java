@@ -37,27 +37,15 @@ public class CoinbaseActivity extends RoboSherlockFragmentActivity {
   }
 
   @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    Bugsnag.onActivityCreate(this);
-  }
-
-  @Override
   public void onDestroy() {
     super.onDestroy();
     Bugsnag.onActivityDestroy(this);
   }
 
   @Override
-  public void onResume() {
-
-    super.onResume();
-    Bugsnag.onActivityResume(this);
-  }
-
-  @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    Bugsnag.onActivityCreate(this);
     if(getClass().isAnnotationPresent(RequiresAuthentication.class)) {
       // Check authentication status
       if(!mLoginManager.isSignedIn()) {
@@ -70,6 +58,8 @@ public class CoinbaseActivity extends RoboSherlockFragmentActivity {
   @Override
   public void onResume() {
 
+    super.onResume();
+    Bugsnag.onActivityResume(this);
     if(getClass().isAnnotationPresent(RequiresAuthentication.class)) {
       // Check authentication status
       if(!mLoginManager.isSignedIn()) {
