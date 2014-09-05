@@ -67,4 +67,10 @@ android {
     lintOptions {
         checkReleaseBuilds false
     }
+
+    buildTypes {
+        debug {
+            packageNameSuffix ".debug"
+        }
+    }
 }
