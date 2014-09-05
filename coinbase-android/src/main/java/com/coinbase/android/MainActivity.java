@@ -15,6 +15,8 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.DrawerLayout;
+
+import com.bugsnag.android.Bugsnag;
 import com.coinbase.android.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -99,6 +101,9 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
     int currentAccount = prefs.getInt(Constants.KEY_ACTIVE_ACCOUNT, -1);
+    Bugsnag.setUser(Utils.getPrefsString(this, Constants.KEY_ACCOUNT_ID, null),
+        Utils.getPrefsString(this, Constants.KEY_ACCOUNT_NAME, null),
+        Utils.getPrefsString(this, Constants.KEY_ACCOUNT_FULL_NAME, null));
     String firstLaunchKey = String.format(Constants.KEY_ACCOUNT_FIRST_LAUNCH, currentAccount);
     boolean firstLaunch = prefs.getBoolean(firstLaunchKey, true);
     prefs.edit().putBoolean(firstLaunchKey, false).commit();
@@ -556,7 +561,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   }
 
   @Override
-  protected void onDestroy() {
+  public void onDestroy() {
     super.onDestroy();
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -564,7 +569,7 @@ public class MainActivity extends CoinbaseActivity implements AccountsFragment.P
   }
 
   @Override
-  protected void onPause() {
+  public void onPause() {
     super.onPause();
 
     mPendingPinReturn = false;

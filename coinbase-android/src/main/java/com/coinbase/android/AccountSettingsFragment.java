@@ -16,6 +16,8 @@ import android.support.v4.app.DialogFragment;
 import android.support.v4.app.ListFragment;
 import android.text.InputType;
 import android.util.DisplayMetrics;
+
+import com.bugsnag.android.Bugsnag;
 import com.coinbase.android.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -37,7 +39,6 @@ import com.coinbase.android.pin.PINSettingDialogFragment;
 import com.coinbase.api.LoginManager;
 import com.coinbase.api.RpcManager;
 
-import org.acra.ACRA;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -76,7 +77,7 @@ public class AccountSettingsFragment extends ListFragment implements CoinbaseFra
 
         return true;
       } catch (JSONException e) {
-        ACRA.getErrorReporter().handleException(new RuntimeException("RefreshSettings", e));
+        Bugsnag.notify(new RuntimeException("RefreshSettings", e));
         e.printStackTrace();
       } catch (IOException e) {
         e.printStackTrace();
@@ -368,7 +369,7 @@ public class AccountSettingsFragment extends ListFragment implements CoinbaseFra
         return new String[][] { display, data };
 
       } catch (JSONException e) {
-        ACRA.getErrorReporter().handleException(new RuntimeException("ShowNetworkList", e));
+        Bugsnag.notify(new RuntimeException("ShowNetworkList", e));
         e.printStackTrace();
         return null;
       } catch (IOException e) {
@@ -444,7 +445,7 @@ public class AccountSettingsFragment extends ListFragment implements CoinbaseFra
         return success;
 
       } catch (JSONException e) {
-        ACRA.getErrorReporter().handleException(new RuntimeException("UpdateUser", e));
+        Bugsnag.notify(new RuntimeException("UpdateUser", e));
         e.printStackTrace();
         return false;
       } catch (IOException e) {
@@ -511,7 +512,7 @@ public class AccountSettingsFragment extends ListFragment implements CoinbaseFra
         e.printStackTrace();
       } catch (JSONException e) {
 
-        ACRA.getErrorReporter().handleException(new RuntimeException("LoadReceiveAddress " + shouldGenerateNew, e));
+        Bugsnag.notify(new RuntimeException("LoadReceiveAddress " + shouldGenerateNew, e));
         e.printStackTrace();
       }
 

@@ -26,6 +26,8 @@ import android.support.v4.widget.CursorAdapter;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.text.Html;
 import android.util.DisplayMetrics;
+
+import com.bugsnag.android.Bugsnag;
 import com.coinbase.android.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -53,7 +55,6 @@ import com.nineoldandroids.animation.Animator;
 import com.nineoldandroids.animation.AnimatorSet;
 import com.nineoldandroids.animation.ObjectAnimator;
 
-import org.acra.ACRA;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -214,7 +215,7 @@ public class TransactionsFragment extends ListFragment implements CoinbaseFragme
       } catch (JSONException e) {
         // Malformed response from Coinbase.
         Log.e("Coinbase", "Could not parse JSON response from Coinbase, aborting refresh of transactions.");
-        ACRA.getErrorReporter().handleException(new RuntimeException("SyncTransactions", e));
+        Bugsnag.notify(new RuntimeException("SyncTransactions", e));
         e.printStackTrace();
 
         return false;
@@ -811,7 +812,7 @@ public class TransactionsFragment extends ListFragment implements CoinbaseFragme
       mBalanceHome.setText(String.format(mParent.getString(R.string.wallet_balance_home), mBalanceNative, mCurrencyNative));
     } catch (Exception e) {
       e.printStackTrace();
-      ACRA.getErrorReporter().handleException(new RuntimeException("updateBalance()", e));
+      Bugsnag.notify(new RuntimeException("updateBalance()", e));
     }
   }
 
