@@ -343,11 +343,16 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     }
     mLastPressedButton = null;
 
+    BigMoneyProvider enteredAmount = getEnteredAmount();
+    Money amount = null;
+    if (enteredAmount != null) {
+      amount = enteredAmount.toBigMoney().toMoney(RoundingMode.HALF_EVEN);
+    }
     WaitForPaymentFragment f = WaitForPaymentFragment.newInstance(
             WaitForPaymentFragment.Type.QR,
             mLoginManager.getReceiveAddress(),
             getEnteredAmountBtc(),
-            getEnteredAmount().toMoney(RoundingMode.HALF_EVEN),
+            amount,
             null,
             getEnteredNotes()
     );
@@ -363,11 +368,16 @@ public class TransferFragment extends RoboFragment implements CoinbaseFragment {
     }
     mLastPressedButton = null;
 
+    BigMoneyProvider enteredAmount = getEnteredAmount();
+    Money amount = null;
+    if (enteredAmount != null) {
+      amount = enteredAmount.toBigMoney().toMoney(RoundingMode.HALF_EVEN);
+    }
     WaitForPaymentFragment f = WaitForPaymentFragment.newInstance(
             WaitForPaymentFragment.Type.NFC,
             mLoginManager.getReceiveAddress(),
             getEnteredAmountBtc(),
-            getEnteredAmount().toMoney(RoundingMode.HALF_EVEN),
+            amount,
             null,
             getEnteredNotes()
     );

@@ -219,7 +219,9 @@ public class WaitForPaymentFragment extends RoboDialogFragment {
   protected BitcoinUri getBitcoinUri() {
     BitcoinUri uri = new BitcoinUri();
     uri.setAddress(mRecipient);
-    uri.setAmount(mAmount.getAmount());
+    if (mAmount != null) {
+      uri.setAmount(mAmount.getAmount());
+    }
     uri.setLabel(mLabel);
     uri.setMessage(mMessage);
 

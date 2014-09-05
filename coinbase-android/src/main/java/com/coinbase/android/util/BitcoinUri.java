@@ -97,9 +97,15 @@ public class BitcoinUri {
     uriBuilder.append(address);
 
     ArrayList<NameValuePair> params = new ArrayList<NameValuePair>();
-    params.add(new BasicNameValuePair("amount", amount.toPlainString()));
-    params.add(new BasicNameValuePair("message", this.message));
-    params.add(new BasicNameValuePair("label", this.label));
+    if (this.amount != null) {
+      params.add(new BasicNameValuePair("amount", amount.toPlainString()));
+    }
+    if (this.message != null) {
+      params.add(new BasicNameValuePair("message", this.message));
+    }
+    if (this.label != null) {
+      params.add(new BasicNameValuePair("label", this.label));
+    }
 
     uriBuilder.append('?');
     uriBuilder.append(URLEncodedUtils.format(params, "UTF-8"));
