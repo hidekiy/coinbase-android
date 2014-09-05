@@ -11,6 +11,7 @@ import android.text.Html;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
+import com.bugsnag.android.Bugsnag;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -198,6 +199,7 @@ public class BuySellFragment extends RoboFragment implements CoinbaseFragment {
         Toast.makeText(context, e.getMessage(), Toast.LENGTH_LONG).show();
       } else {
         Toast.makeText(context, mApiErrorMessage, Toast.LENGTH_LONG).show();
+        Bugsnag.notify(new RuntimeException("BuySellTask", e));
       }
     }
 

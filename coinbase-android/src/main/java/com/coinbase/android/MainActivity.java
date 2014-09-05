@@ -15,6 +15,7 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.DrawerLayout;
+import com.bugsnag.android.Bugsnag;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -110,6 +111,10 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
     if (isFinishing()) {
       return;
     }
+
+    Bugsnag.setUser(Utils.getPrefsString(this, Constants.KEY_USER_ID, null),
+        Utils.getPrefsString(this, Constants.KEY_ACCOUNT_EMAIL, null),
+        Utils.getPrefsString(this, Constants.KEY_ACCOUNT_FULL_NAME, null));
 
     setContentView(R.layout.activity_main);
 
@@ -561,7 +566,7 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
   }
 
   @Override
-  protected void onDestroy() {
+  public void onDestroy() {
     super.onDestroy();
 
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -569,7 +574,7 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
   }
 
   @Override
-  protected void onPause() {
+  public void onPause() {
     super.onPause();
 
     mPendingPinReturn = false;

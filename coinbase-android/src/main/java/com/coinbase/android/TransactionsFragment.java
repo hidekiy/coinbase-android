@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentTransaction;
 import android.util.DisplayMetrics;
+import com.bugsnag.android.Bugsnag;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -57,10 +58,8 @@ import com.coinbase.api.entity.Transaction;
 import com.google.inject.Inject;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
-
 import org.acra.ACRA;
 import org.joda.money.Money;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -825,7 +824,7 @@ public class TransactionsFragment extends RoboListFragment implements CoinbaseFr
       mBalanceHome.setText(String.format(mNativeBalanceFormatString, Utils.formatMoney(mBalanceNative)));
     } catch (Exception e) {
       e.printStackTrace();
-      ACRA.getErrorReporter().handleException(new RuntimeException("updateBalance()", e));
+      Bugsnag.notify(new RuntimeException("updateBalance()", e));
     }
   }
 
