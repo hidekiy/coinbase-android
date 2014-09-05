@@ -10,7 +10,7 @@ The official Android application for [Coinbase](https://coinbase.com/).
 * See prices in BTC or your native currency
 * Support for multiple accounts
 * 100% open source - contributions welcome
-* Revoke [access](https://coinbase.com/account/integrations) remotely if you lose your phone.
+* Revoke [access](https://coinbase.com/applications) remotely if you lose your phone.
 
 You can find more information, and download the app, at https://play.google.com/store/apps/details?id=com.coinbase.android.
 
