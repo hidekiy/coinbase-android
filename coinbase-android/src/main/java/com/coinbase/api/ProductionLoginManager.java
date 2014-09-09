@@ -211,15 +211,22 @@ public class ProductionLoginManager implements LoginManager {
 
       SQLiteDatabase db = dbManager.openDatabase();
       try {
+        boolean foundPrimaryAccount = false;
         for (Account account : accounts) {
           if (account.isActive()) {
             AccountORM.insert(db, account);
             if (account.isPrimary()) {
               e.putString(Constants.KEY_ACTIVE_ACCOUNT_ID, account.getId());
               e.commit();
+              foundPrimaryAccount = true;
             }
           }
         }
+
+        if (!foundPrimaryAccount) {
+          throw new Exception("Could not find primary account");
+        }
+
       } finally {
         dbManager.closeDatabase();
       }
@@ -227,6 +234,7 @@ public class ProductionLoginManager implements LoginManager {
       return null;
     } catch (Exception e) {
       e.printStackTrace();
+      PreferenceManager.getDefaultSharedPreferences(context).edit().clear().commit();
       return context.getString(R.string.login_error_io);
     }
   }
