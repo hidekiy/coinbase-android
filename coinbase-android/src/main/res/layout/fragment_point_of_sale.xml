@@ -74,6 +74,7 @@
                     android:id="@+id/pos_submit"
                     android:textColor="#ffffff"
                     android:text="@string/pos_submit"
+                    android:filterTouchesWhenObscured="true"
                     android:background="@drawable/button_primary">
                 </Button>
     
@@ -105,6 +106,7 @@
                     android:id="@+id/pos_loading_cancel"
                     android:textColor="#000000"
                     android:text="@string/pos_accept_cancel"
+                    android:filterTouchesWhenObscured="true"
                     android:background="@drawable/button_secondary" />
             </LinearLayout>
     
@@ -156,6 +158,7 @@
                     android:id="@+id/pos_accept_cancel"
                     android:textColor="#000000"
                     android:text="@string/pos_accept_cancel"
+                    android:filterTouchesWhenObscured="true"
                     android:background="@drawable/button_secondary">
                 </Button>
             </LinearLayout>
@@ -206,6 +209,7 @@
                     android:layout_height="wrap_content"
                     android:id="@+id/pos_result_ok"
                     android:textColor="#000000"
+                    android:filterTouchesWhenObscured="true"
                     android:text="@string/pos_result_ok"
                     android:background="@drawable/button_secondary">
                 </Button>
@@ -238,9 +242,11 @@
                     android:layout_below="@+id/pos_add_tip_title">
                     <Button
                         style="@style/PointOfSaleTipButton"
+                        android:filterTouchesWhenObscured="true"
                         android:tag="5"/>
                     <Button
                         style="@style/PointOfSaleTipButton"
+                        android:filterTouchesWhenObscured="true"
                         android:tag="10"/>
                 </LinearLayout>
 
@@ -252,9 +258,11 @@
                     android:layout_below="@+id/pos_add_tip_buttons_1">
                     <Button
                         style="@style/PointOfSaleTipButton"
+                        android:filterTouchesWhenObscured="true"
                         android:tag="15"/>
                     <Button
                         style="@style/PointOfSaleTipButton"
+                        android:filterTouchesWhenObscured="true"
                         android:tag="20"/>
                 </LinearLayout>
 
@@ -264,6 +272,7 @@
                     android:text="@string/pos_tip_custom"
                     android:layout_height="50dp"
                     android:layout_below="@+id/pos_add_tip_buttons_2"
+                    android:filterTouchesWhenObscured="true"
                     android:id="@+id/pos_add_tip_custom"/>
 
                 <RelativeLayout
@@ -298,6 +307,7 @@
                     android:layout_width="match_parent"
                     android:background="@drawable/button_primary"
                     android:text="@string/pos_tip_custom_confirm"
+                    android:filterTouchesWhenObscured="true"
                     android:layout_height="50dp"
                     android:layout_below="@+id/pos_add_tip_custom_container"
                     android:id="@+id/pos_add_tip_custom_confirm"
@@ -330,6 +340,7 @@
             android:layout_centerVertical="true"
             android:src="@drawable/ic_action_core_overflow"
             android:background="@drawable/button_transparent"
+            android:filterTouchesWhenObscured="true"
             android:id="@+id/pos_menu"
             android:padding="7dp"/>
     </RelativeLayout>

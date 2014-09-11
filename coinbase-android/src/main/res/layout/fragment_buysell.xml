@@ -108,6 +108,7 @@
                 android:background="@drawable/button_primary"
                 android:textColor="#ffffff"
                 android:enabled="false"
+                android:filterTouchesWhenObscured="true"
                 android:text="@string/buysell_submit_buy" />
         </RelativeLayout>
 

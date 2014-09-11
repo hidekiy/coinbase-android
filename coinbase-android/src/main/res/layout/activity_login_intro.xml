@@ -53,6 +53,7 @@
             android:textSize="8pt"
             android:background="@drawable/login_button"
             android:textColor="#ffffff"
+            android:filterTouchesWhenObscured="true"
             android:padding="15dp" />
 
     </LinearLayout>
