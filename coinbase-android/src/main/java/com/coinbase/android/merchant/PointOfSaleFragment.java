@@ -300,7 +300,9 @@ public class PointOfSaleFragment extends RoboSherlockFragment implements Coinbas
       @Override
       public void onClick(View v) {
         if (mFlipper.getDisplayedChild() != INDEX_LOADING) return;
-        mCreatingTask.cancel(true);
+        if (mCreatingTask != null) {
+          mCreatingTask.cancel(true);
+        }
         switchToMain();
       }
     });
@@ -509,8 +511,10 @@ public class PointOfSaleFragment extends RoboSherlockFragment implements Coinbas
   }
 
   private void onOrderCheckError() {
-    mCheckStatusTimer.cancel();
-    mCheckStatusTimer = null;
+    if (mCheckStatusTimer != null) {
+      mCheckStatusTimer.cancel();
+      mCheckStatusTimer = null;
+    }
 
     mParent.runOnUiThread(new Runnable() {
       @Override
@@ -539,8 +543,10 @@ public class PointOfSaleFragment extends RoboSherlockFragment implements Coinbas
   }
 
   private void onPaymentAccepted(final Order order) {
-    mCheckStatusTimer.cancel();
-    mCheckStatusTimer = null;
+    if (mCheckStatusTimer != null) {
+      mCheckStatusTimer.cancel();
+      mCheckStatusTimer = null;
+    }
 
     mParent.runOnUiThread(new Runnable() {
       @Override
@@ -663,8 +669,10 @@ public class PointOfSaleFragment extends RoboSherlockFragment implements Coinbas
   }
 
   private void stopAccepting() {
-    mCheckStatusTimer.cancel();
-    mCheckStatusTimer = null;
+    if (mCheckStatusTimer != null) {
+      mCheckStatusTimer.cancel();
+      mCheckStatusTimer = null;
+    }
     showResult(Order.Status.CANCELED, getString(R.string.pos_result_failure_cancel), null);
   }
 
