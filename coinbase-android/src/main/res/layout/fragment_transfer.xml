@@ -117,6 +117,7 @@
                 android:id="@+id/transfer_money_button_clear"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:filterTouchesWhenObscured="true"
                 android:text="@string/transfer_button_clear"
                 android:visibility="gone" />
     
@@ -124,6 +125,7 @@
                 android:id="@+id/transfer_money_button_send"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
+                android:filterTouchesWhenObscured="true"
                 android:layout_alignParentLeft="true"
                 android:layout_alignParentRight="true"
                 android:layout_below="@+id/transfer_money_notes"
@@ -145,6 +147,7 @@
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:enabled="false"
+                    android:filterTouchesWhenObscured="true"
                     android:text="@string/transfer_button_nfc"
                     android:background="@drawable/button_secondary" />
                 <Button
@@ -153,6 +156,7 @@
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:text="@string/transfer_button_qrcode"
+                    android:filterTouchesWhenObscured="true"
                     android:background="@drawable/button_secondary" />
 
                 <Button
@@ -160,6 +164,7 @@
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:filterTouchesWhenObscured="true"
                     android:text="@string/transfer_button_email"
                     android:background="@drawable/button_primary"
                     android:textColor="#ffffff" />
