@@ -53,7 +53,8 @@
         <activity
             android:name=".LoginActivity"
             android:configChanges="orientation|screenSize"
-            android:label="@string/title_activity_login" >
+            android:label="@string/title_activity_login"
+            android:windowSoftInputMode="adjustResize" >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
