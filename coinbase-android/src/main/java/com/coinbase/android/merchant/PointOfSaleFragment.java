@@ -191,7 +191,11 @@ public class PointOfSaleFragment extends RoboSherlockFragment implements Coinbas
           onOrderCheckCompleted(mTimesExecuted);
         }
       } catch (Exception ex) {
-        onOrderCheckError();
+        // TODO remove this ugly kludge when we remove new order hotfix
+        if (!ex.getMessage().contains("not found")) {
+          ex.printStackTrace();
+          onOrderCheckError();
+        }
       }
     }
   }
