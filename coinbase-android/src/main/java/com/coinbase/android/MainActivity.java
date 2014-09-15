@@ -516,7 +516,7 @@ public class MainActivity extends CoinbaseActivity implements TransactionsFragme
     menu.findItem(R.id.menu_help).setVisible(!kioskMode);
     menu.findItem(R.id.menu_about).setVisible(!kioskMode);
     menu.findItem(R.id.menu_sign_out).setVisible(!kioskMode);
-    menu.findItem(R.id.menu_accounts).setVisible(!kioskMode);
+    menu.findItem(R.id.menu_accounts).setVisible(!kioskMode && (BuildConfig.type != BuildType.MERCHANT));
 
     return true;
   }

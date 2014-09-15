@@ -60,7 +60,7 @@ public class PINPromptActivity extends CoinbaseActivity {
 
     setContentView(R.layout.activity_pinprompt);
 
-    ((TextView) findViewById(R.id.pin_account)).setText(mLoginManager.getSelectedAccountName());
+    ((TextView) findViewById(R.id.pin_account)).setText(mLoginManager.getActiveUserEmail());
 
     mPinNumberField = ((EditText) findViewById(R.id.pin_number));
     mPinNumberField.setOnEditorActionListener(new OnEditorActionListener() {

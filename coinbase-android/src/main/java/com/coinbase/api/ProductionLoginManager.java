@@ -160,8 +160,7 @@ public class ProductionLoginManager implements LoginManager {
       throw new RuntimeException(e);
     }
 
-    // TODO use merchant permissions on merchant build type
-    String scope = "all";
+    String scope = BuildConfig.type == BuildType.MERCHANT ? "merchant" : "all";
 
     String authorizeUrl = baseUrl + "?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + redirectUrl + "&scope=" + scope + "&meta[name]=" + device;
     return authorizeUrl;
@@ -207,28 +206,31 @@ public class ProductionLoginManager implements LoginManager {
       e.putString(Constants.KEY_ACCOUNT_LIMIT_CURRENCY_SELL, user.getSellLimit().getCurrencyUnit().getCurrencyCode());
       e.commit();
 
-      List<Account> accounts = getClient().getAccounts().getAccounts();
+      if (BuildConfig.type != BuildType.MERCHANT) {
 
-      SQLiteDatabase db = dbManager.openDatabase();
-      try {
-        boolean foundPrimaryAccount = false;
-        for (Account account : accounts) {
-          if (account.isActive()) {
-            AccountORM.insert(db, account);
-            if (account.isPrimary()) {
-              e.putString(Constants.KEY_ACTIVE_ACCOUNT_ID, account.getId());
-              e.commit();
-              foundPrimaryAccount = true;
+        List<Account> accounts = getClient().getAccounts().getAccounts();
+
+        SQLiteDatabase db = dbManager.openDatabase();
+        try {
+          boolean foundPrimaryAccount = false;
+          for (Account account : accounts) {
+            if (account.isActive()) {
+              AccountORM.insert(db, account);
+              if (account.isPrimary()) {
+                e.putString(Constants.KEY_ACTIVE_ACCOUNT_ID, account.getId());
+                e.commit();
+                foundPrimaryAccount = true;
+              }
             }
           }
-        }
 
-        if (!foundPrimaryAccount) {
-          throw new Exception("Could not find primary account");
-        }
+          if (!foundPrimaryAccount) {
+            throw new Exception("Could not find primary account");
+          }
 
-      } finally {
-        dbManager.closeDatabase();
+        } finally {
+          dbManager.closeDatabase();
+        }
       }
 
       return null;
@@ -319,6 +321,12 @@ public class ProductionLoginManager implements LoginManager {
   public String getActiveAccountId() {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
     return prefs.getString(Constants.KEY_ACTIVE_ACCOUNT_ID, null);
+  }
+
+  @Override
+  public String getActiveUserEmail() {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+    return prefs.getString(Constants.KEY_ACCOUNT_EMAIL, null);
   }
 
   private synchronized String getAccessToken() {

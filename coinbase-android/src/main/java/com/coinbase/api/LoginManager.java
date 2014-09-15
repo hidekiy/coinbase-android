@@ -42,4 +42,6 @@ public interface LoginManager {
   String getActiveAccountId();
 
   void signout();
+
+  String getActiveUserEmail();
 }
