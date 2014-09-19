@@ -160,18 +160,18 @@ public class PINPromptActivity extends CoinbaseActivity {
   }
 
   private void onSubmit() {
+      String user_pin = mPinNumberField.getText().toString();
     if(mIsSetMode) {
-      if(!"".equals(mPinNumberField.getText().toString())) {
-        onPinEntered(mPinNumberField.getText().toString());
+      if(!"".equals(user_pin)) {
+        onPinEntered(user_pin);
       }
     } else {
 
       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(PINPromptActivity.this);
-      String pin = prefs.getString(Constants.KEY_ACCOUNT_PIN, null);
 
-      if(mPinNumberField.getText().toString().equals(pin)) {
+      if(mPinManager.verifyPin(this.getApplicationContext(), user_pin)) {
         // Correct PIN has been entered.
-        onPinEntered(pin);
+        onPinEntered(user_pin);
       } else {
         mPinNumberField.setText(null);
         Toast.makeText(PINPromptActivity.this, R.string.pin_incorrect, Toast.LENGTH_SHORT).show();
