@@ -681,7 +681,7 @@ public class PointOfSaleFragment extends RoboSherlockFragment implements Coinbas
   }
 
   private Money getAmount() {
-    Money quantity = Money.of(getCurrency(), 0);
+    Money quantity = Money.zero(getCurrency());
     try {
       quantity = Money.of(
               getCurrency(),
